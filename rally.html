@@ -338,7 +338,7 @@
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.8);
-      z-index: 300;
+      z-index: 9999;
       align-items: center;
       justify-content: center;
     }
@@ -410,6 +410,118 @@
     }
     .modal-error { color: var(--red); font-size: 12px; margin-top: 10px; text-align: center; }
 
+    /* Route Planner Bar */
+    .route-planner {
+      position: absolute;
+      top: 16px; left: 50%; transform: translateX(-50%);
+      width: 420px; max-width: 90vw;
+      background: rgba(10,10,15,0.85);
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 12px;
+      padding: 12px;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .rp-row { display: flex; gap: 8px; align-items: center; }
+    .rp-icon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+    .rp-input-wrap { flex: 1; position: relative; }
+    .rp-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      outline: none;
+    }
+    .rp-input:focus { border-color: var(--cyan); }
+    .rp-input::placeholder { color: rgba(255,255,255,0.3); }
+    .rp-dropdown {
+      position: absolute;
+      top: calc(100% + 4px); left: 0; right: 0;
+      background: #13131A;
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 8px;
+      max-height: 200px; overflow-y: auto;
+      z-index: 150;
+      display: none;
+    }
+    .rp-dropdown.open { display: block; }
+    .rp-option {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 12px;
+    }
+    .rp-option:hover { background: rgba(0,200,255,0.08); }
+    .rp-option:last-child { border-bottom: none; }
+    .rp-option-sub { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+    .rp-btn {
+      background: var(--cyan); color: #000;
+      border: none; border-radius: 8px;
+      padding: 10px 16px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .rp-btn:disabled { opacity: 0.4; cursor: default; }
+    .rp-save-btn {
+      width: 100%; padding: 10px;
+      background: rgba(0,200,255,0.15);
+      border: 1px solid rgba(0,200,255,0.3);
+      color: var(--cyan); border-radius: 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; display: none;
+    }
+    .rp-save-btn.visible { display: block; }
+
+    /* Route Info Badge */
+    .route-info {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: rgba(10,10,15,0.85);
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      backdrop-filter: blur(10px);
+      z-index: 90;
+      display: none;
+      font-size: 12px;
+    }
+    .route-info.visible { display: flex; flex-direction: column; gap: 4px; }
+    .route-info-main { font-weight: 600; color: var(--cyan); }
+    .route-info-sub { font-size: 10px; color: rgba(255,255,255,0.5); }
+    .route-info-clear {
+      position: absolute; top: 6px; right: 8px;
+      background: none; border: none; color: rgba(255,255,255,0.3);
+      cursor: pointer; font-size: 14px;
+    }
+    .route-info-clear:hover { color: #fff; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,255,136,0.15); border: 1px solid rgba(0,255,136,0.3);
+      color: var(--green); border-radius: 10px;
+      padding: 10px 20px; font-size: 12px; font-weight: 600;
+      z-index: 9000; display: none;
+    }
+    .toast.show { display: block; animation: fadeout 3s forwards; }
+    @keyframes fadeout { 0%,70%{opacity:1} 100%{opacity:0;display:none} }
+
+    @media (max-width: 768px) {
+      .route-planner { width: 90vw; top: 10px; }
+      .rp-row { flex-direction: column; }
+      .rp-btn { width: 100%; }
+      .route-info { top: auto; bottom: 52vh; right: 10px; }
+    }
+
     /* Custom Mapbox marker */
     .custom-marker {
       width: 14px; height: 14px;
@@ -477,8 +589,37 @@
     <a href="vault.html" class="nav-link">🔒 Vault</a>
   </nav>
 
+  <div class="toast" id="toast"></div>
+
   <div class="app-layout">
-    <div id="map"></div>
+    <div id="map" style="position:relative">
+      <!-- Route Planner -->
+      <div class="route-planner">
+        <div class="rp-row">
+          <span class="rp-icon">📍</span>
+          <div class="rp-input-wrap">
+            <input class="rp-input" id="rp-from" placeholder="From: search any location..." autocomplete="off">
+            <div class="rp-dropdown" id="rp-from-dd"></div>
+          </div>
+        </div>
+        <div class="rp-row">
+          <span class="rp-icon">🏁</span>
+          <div class="rp-input-wrap">
+            <input class="rp-input" id="rp-to" placeholder="To: search any destination..." autocomplete="off">
+            <div class="rp-dropdown" id="rp-to-dd"></div>
+          </div>
+          <button class="rp-btn" id="rp-go" disabled>GET ROUTE</button>
+        </div>
+        <button class="rp-save-btn" id="rp-save">💾 SAVE ROUTE FOR ALL</button>
+      </div>
+
+      <!-- Route Info Badge -->
+      <div class="route-info" id="route-info">
+        <button class="route-info-clear" onclick="clearPlannedRoute()">✕</button>
+        <span class="route-info-main" id="ri-main"></span>
+        <span class="route-info-sub" id="ri-sub"></span>
+      </div>
+    </div>
 
     <div class="right-panel">
       <!-- Header -->
@@ -646,6 +787,107 @@
         })
         .subscribe()
     })
+
+    // ══════════════════════════════════════
+    // ROUTE PLANNER — Waze-style search
+    // ══════════════════════════════════════
+    const MB_TOKEN = mapboxgl.accessToken
+    let rpFrom = null, rpTo = null // {name, lng, lat}
+    let rpRouteCoords = null
+    let debounceTimer = null
+
+    function geocode(query, dropdownId) {
+      clearTimeout(debounceTimer)
+      const dd = document.getElementById(dropdownId)
+      if (query.length < 3) { dd.classList.remove('open'); return }
+      debounceTimer = setTimeout(async () => {
+        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MB_TOKEN}&autocomplete=true&country=US&types=place,address,poi&limit=5`)
+        const data = await res.json()
+        if (!data.features || !data.features.length) { dd.classList.remove('open'); return }
+        dd.innerHTML = data.features.map(f => {
+          const sub = f.context ? f.context.map(c => c.text).join(', ') : ''
+          return `<div class="rp-option" data-lng="${f.center[0]}" data-lat="${f.center[1]}" data-name="${esc(f.place_name)}">${esc(f.text)}<div class="rp-option-sub">${esc(sub)}</div></div>`
+        }).join('')
+        dd.classList.add('open')
+        dd.querySelectorAll('.rp-option').forEach(opt => {
+          opt.addEventListener('click', () => {
+            const isFrom = dropdownId === 'rp-from-dd'
+            const obj = { name: opt.dataset.name, lng: parseFloat(opt.dataset.lng), lat: parseFloat(opt.dataset.lat) }
+            if (isFrom) { rpFrom = obj; document.getElementById('rp-from').value = opt.textContent.split('\n')[0] }
+            else { rpTo = obj; document.getElementById('rp-to').value = opt.textContent.split('\n')[0] }
+            dd.classList.remove('open')
+            document.getElementById('rp-go').disabled = !(rpFrom && rpTo)
+          })
+        })
+      }, 350)
+    }
+
+    document.getElementById('rp-from').addEventListener('input', e => geocode(e.target.value, 'rp-from-dd'))
+    document.getElementById('rp-to').addEventListener('input', e => geocode(e.target.value, 'rp-to-dd'))
+    // Close dropdowns on outside click
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.rp-input-wrap')) {
+        document.getElementById('rp-from-dd').classList.remove('open')
+        document.getElementById('rp-to-dd').classList.remove('open')
+      }
+    })
+
+    document.getElementById('rp-go').addEventListener('click', async () => {
+      if (!rpFrom || !rpTo) return
+      const btn = document.getElementById('rp-go')
+      btn.textContent = '...'; btn.disabled = true
+      try {
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${rpFrom.lng},${rpFrom.lat};${rpTo.lng},${rpTo.lat}?geometries=geojson&overview=full&steps=false&access_token=${MB_TOKEN}`
+        const res = await fetch(url)
+        const data = await res.json()
+        if (!data.routes || !data.routes.length) { btn.textContent = 'NO ROUTE'; setTimeout(() => { btn.textContent = 'GET ROUTE'; btn.disabled = false }, 2000); return }
+        const route = data.routes[0]
+        rpRouteCoords = route.geometry.coordinates
+        drawRoute(rpRouteCoords)
+        // Fit bounds
+        const lngs = rpRouteCoords.map(c => c[0]), lats = rpRouteCoords.map(c => c[1])
+        map.fitBounds([[Math.min(...lngs), Math.min(...lats)],[Math.max(...lngs), Math.max(...lats)]], { padding: 80 })
+        // Show info badge
+        const miles = (route.distance / 1609.34).toFixed(1)
+        const mins = Math.round(route.duration / 60)
+        document.getElementById('ri-main').textContent = `🚗 ${miles} miles · ${mins} min`
+        document.getElementById('ri-sub').textContent = `${rpFrom.name.split(',')[0]} → ${rpTo.name.split(',')[0]}`
+        document.getElementById('route-info').classList.add('visible')
+        document.getElementById('rp-save').classList.add('visible')
+      } catch (err) {
+        console.error('Directions error:', err)
+      }
+      btn.textContent = 'GET ROUTE'; btn.disabled = false
+    })
+
+    document.getElementById('rp-save').addEventListener('click', async () => {
+      if (!rpRouteCoords || !rpFrom || !rpTo) return
+      const routeName = `${rpFrom.name.split(',')[0]} → ${rpTo.name.split(',')[0]}`
+      // Try update existing active route, else insert
+      const { data: existing } = await db.from('rally_routes').select('id').eq('is_active', true).limit(1)
+      if (existing && existing.length > 0) {
+        await db.from('rally_routes').update({ waypoints: rpRouteCoords, name: routeName, is_active: true }).eq('id', existing[0].id)
+      } else {
+        await db.from('rally_routes').insert({ waypoints: rpRouteCoords, name: routeName, is_active: true })
+      }
+      showToast('✅ Route live for all participants')
+    })
+
+    function clearPlannedRoute() {
+      if (map.getSource('route')) map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } })
+      document.getElementById('route-info').classList.remove('visible')
+      document.getElementById('rp-save').classList.remove('visible')
+      document.getElementById('rp-from').value = ''
+      document.getElementById('rp-to').value = ''
+      rpFrom = null; rpTo = null; rpRouteCoords = null
+      document.getElementById('rp-go').disabled = true
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast')
+      t.textContent = msg; t.className = 'toast show'
+      setTimeout(() => { t.className = 'toast' }, 3000)
+    }
 
     // Markers store: Map<id, {marker, popup}>
     const markers = new Map()
