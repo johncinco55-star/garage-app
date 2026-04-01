@@ -103,13 +103,13 @@
       transform: translateX(-50%);
       width: 420px;
       max-width: 90vw;
-      background: rgba(10,10,15,0.92);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
       padding: 14px 16px;
       z-index: 50;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
     }
     #route-planner.visible { display: block; }
     .planner-label {
@@ -190,8 +190,10 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
-      background: #0D0D12;
-      border-left: 1px solid rgba(255,255,255,0.06);
+      background: rgba(10,10,15,0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(0,200,255,0.1);
       overflow: hidden;
     }
 
@@ -548,7 +550,9 @@
     }
     .modal-overlay.open { display: flex !important; }
     .modal-box {
-      background: #12121A;
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(0,200,255,0.2);
       border-radius: 18px;
       padding: 28px;
@@ -844,20 +848,21 @@
     /* ───── NAVIGATION MODE ───── */
     .nav-bar {
       position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
-      background: rgba(10,10,15,0.92); border: 1px solid rgba(0,200,255,0.25);
-      border-radius: 14px; padding: 14px 20px; z-index: 95;
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 14px 20px; z-index: 100;
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       display: none; flex-direction: column; align-items: center; gap: 6px;
-      min-width: 280px; max-width: 90vw;
+      min-width: 300px; max-width: 90vw;
     }
     .nav-bar.visible { display: flex; }
     .nav-instruction { font-size: 18px; font-weight: 700; color: #fff; text-align: center; }
     .nav-distance { font-size: 12px; color: var(--cyan); font-weight: 600; }
     .nav-eta { font-size: 11px; color: rgba(255,255,255,0.5); }
     .nav-stop-btn {
-      margin-top: 4px; padding: 6px 16px; border-radius: 8px;
-      background: rgba(255,68,68,0.2); border: 1px solid rgba(255,68,68,0.4);
-      color: var(--red); font-size: 11px; font-weight: 600; cursor: pointer;
+      margin-top: 4px; padding: 8px 20px; border-radius: 10px;
+      background: rgba(255,68,68,0.6); border: 1px solid rgba(255,100,100,0.3);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;
       font-family: 'Space Grotesk', sans-serif;
     }
     .start-nav-btn {
@@ -873,6 +878,9 @@
     .standings-panel {
       display: none; flex-direction: column;
       padding: 0; overflow: hidden;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(0,200,255,0.15);
     }
     .standings-panel.visible { display: flex; }
     .standings-header {
@@ -923,9 +931,9 @@
     .hazard-bar {
       position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
       display: none; gap: 6px; z-index: 80;
-      background: rgba(10,10,15,0.85); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px; padding: 8px 12px;
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50px; padding: 8px 16px;
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     }
     .hazard-bar.visible { display: flex; }
     .hazard-btn {
@@ -1491,7 +1499,7 @@ async function getRoute() {
   if (!selectedOrigin || !selectedDest) { showToast('Set both start and destination', 'error'); return; }
   try {
     const res = await fetch(
-      `https://api.mapbox.com/directions/v5/mapbox/driving/${selectedOrigin.lng},${selectedOrigin.lat};${selectedDest.lng},${selectedDest.lat}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${selectedOrigin.lng},${selectedOrigin.lat};${selectedDest.lng},${selectedDest.lat}?geometries=geojson&overview=full&steps=true&access_token=${mapboxgl.accessToken}`
     );
     const data = await res.json();
     if (!data.routes || !data.routes.length) { showToast('No route found', 'error'); return; }
@@ -2464,8 +2472,9 @@ map.on('load', async () => {
 // TURN-BY-TURN NAVIGATION
 // ══════════════════════════════════════
 let navMode = false;
-let navRouteCoords = null; // full route coordinates for nav
+let navRouteCoords = null;
 let navWatchId = null;
+let navSteps = []; // turn-by-turn steps from Mapbox Directions
 
 function startNavigation() {
   if (!currentRoute || !currentRoute.geometry) { showToast('Get a route first', 'error'); return; }
@@ -2484,23 +2493,33 @@ function startNavigation() {
   // Mobile strip
   if (window.innerWidth <= 768) document.getElementById('standings-strip').classList.add('visible');
 
-  // Tilt map to 3D
-  map.easeTo({ pitch: 45, duration: 1000 });
+  // Zoom in to street level + 3D tilt
+  const userLat = state.lastLat || navRouteCoords[0][1];
+  const userLng = state.lastLng || navRouteCoords[0][0];
+  const userHeading = (state.lastLat && state.lastLng && navRouteCoords.length > 1)
+    ? bearing(state.lastLat, state.lastLng, navRouteCoords[1][1], navRouteCoords[1][0])
+    : 0;
+  map.flyTo({
+    center: [userLng, userLat],
+    zoom: 15,
+    pitch: 45,
+    bearing: userHeading,
+    duration: 1500
+  });
 
-  // Update nav info
-  updateNavInfo();
+  // Fetch turn-by-turn steps if available
+  navSteps = (currentRoute.legs && currentRoute.legs[0] && currentRoute.legs[0].steps) || [];
+  updateNavInfo(userLat, userLng);
 
   // Start continuous GPS watch for navigation
   if (navigator.geolocation) {
     navWatchId = navigator.geolocation.watchPosition((pos) => {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
       // Re-center map on user and rotate to heading
-      if (state.lastLat && state.lastLng) {
-        const hdg = bearing(state.lastLat, state.lastLng, lat, lng);
-        map.easeTo({ center: [lng, lat], bearing: hdg, duration: 1000 });
-      } else {
-        map.easeTo({ center: [lng, lat], duration: 1000 });
-      }
+      const hdg = (state.lastLat && state.lastLng)
+        ? bearing(state.lastLat, state.lastLng, lat, lng)
+        : map.getBearing();
+      map.easeTo({ center: [lng, lat], bearing: hdg, zoom: 15, duration: 1000 });
       updateNavInfo(lat, lng);
       updateStandings();
     }, () => {}, { enableHighAccuracy: true });
@@ -2541,35 +2560,57 @@ function stopNavigation() {
 function updateNavInfo(lat, lng) {
   if (!navRouteCoords || !navRouteCoords.length) return;
   const dest = navRouteCoords[navRouteCoords.length - 1];
+  const instrEl = document.getElementById('nav-instruction');
+  const distEl = document.getElementById('nav-dist');
+  const etaEl = document.getElementById('nav-eta');
 
   if (lat && lng) {
     const distMiles = haversine(lat, lng, dest[1], dest[0]);
     const distText = distMiles < 0.1 ? `${Math.round(distMiles * 5280)} ft` : `${distMiles.toFixed(1)} mi`;
-    document.getElementById('nav-dist').textContent = `${distText} remaining`;
+    distEl.textContent = `📍 ${distText} remaining`;
 
-    // ETA based on current speed or 30mph default
+    // ETA as actual clock time
     const speedMph = (state.lastLat && state.lastLng && state.lastTime)
       ? Math.max(haversine(state.lastLat, state.lastLng, lat, lng) / ((Date.now() - state.lastTime) / 3600000), 5)
       : 30;
     const etaMins = Math.round((distMiles / speedMph) * 60);
-    document.getElementById('nav-eta').textContent = etaMins > 60
-      ? `ETA: ${Math.floor(etaMins/60)}h ${etaMins%60}m`
-      : `ETA: ${etaMins} min`;
+    const etaTime = new Date(Date.now() + etaMins * 60000);
+    const etaStr = etaTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    etaEl.textContent = `ETA ${etaStr} · ${etaMins} min`;
 
-    // Simple instruction based on proximity to next waypoint
+    // Turn-by-turn instruction from Mapbox steps
     if (distMiles < 0.05) {
-      document.getElementById('nav-instruction').textContent = '🏁 You have arrived!';
+      instrEl.textContent = '🏁 You have arrived!';
+    } else if (navSteps && navSteps.length > 0) {
+      // Find nearest upcoming step
+      let nearestStep = navSteps[0];
+      let nearestDist = Infinity;
+      for (const step of navSteps) {
+        if (step.maneuver && step.maneuver.location) {
+          const d = haversine(lat, lng, step.maneuver.location[1], step.maneuver.location[0]);
+          if (d < nearestDist && d > 0.01) { nearestDist = d; nearestStep = step; }
+        }
+      }
+      const turnDist = nearestDist < 0.1 ? `${Math.round(nearestDist * 5280)} ft` : `${nearestDist.toFixed(1)} mi`;
+      const arrow = getManeuverArrow(nearestStep.maneuver ? nearestStep.maneuver.type : '');
+      instrEl.textContent = `${arrow} ${nearestStep.maneuver ? nearestStep.maneuver.instruction || 'Continue' : 'Continue'}    ${turnDist}`;
     } else if (distMiles < 0.2) {
-      document.getElementById('nav-instruction').textContent = '📍 Destination ahead';
+      instrEl.textContent = '📍 Destination ahead';
     } else {
-      document.getElementById('nav-instruction').textContent = 'Follow the route';
+      instrEl.textContent = '→ Follow the route';
     }
   } else {
     const totalDist = currentRoute ? (currentRoute.distance / 1609.34).toFixed(1) : '?';
     const totalMin = currentRoute ? Math.round(currentRoute.duration / 60) : '?';
-    document.getElementById('nav-dist').textContent = `${totalDist} mi total`;
-    document.getElementById('nav-eta').textContent = `~${totalMin} min drive`;
+    distEl.textContent = `📍 ${totalDist} mi total`;
+    etaEl.textContent = `~${totalMin} min drive`;
+    instrEl.textContent = '→ Follow the route';
   }
+}
+
+function getManeuverArrow(type) {
+  const arrows = { 'turn': '↱', 'turn right': '↱', 'turn left': '↰', 'slight right': '↗', 'slight left': '↖', 'sharp right': '⤵', 'sharp left': '⤴', 'uturn': '↩', 'merge': '↗', 'fork': '⑂', 'roundabout': '↻', 'depart': '→', 'arrive': '🏁' };
+  return arrows[type] || '→';
 }
 
 // Show START NAVIGATION button after route is drawn
