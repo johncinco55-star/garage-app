@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Garage — Collection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #09090B;
+      --cyan: #00C8FF;
+      --green: #00FF88;
+      --red: #FF4444;
+      --amber: #FFB800;
+      --sidebar-w: 180px;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(0,200,255,0.15);
+    }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: #fff;
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #0A0A0F;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      padding: 0 18px 28px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.8); }
+    .nav-link.active {
+      color: #fff;
+      border-left-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .rally-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 36px 32px;
+    }
+    .page-title {
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 32px;
+      letter-spacing: -1px;
+    }
+    .page-title .solid { color: #fff; }
+    .page-title .outline {
+      -webkit-text-stroke: 1px #fff;
+      color: transparent;
+    }
+
+    .cars-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .car-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .car-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .car-color-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      flex-shrink: 0;
+    }
+    .car-owner { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .car-name { font-size: 15px; font-weight: 600; }
+    .car-year { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .car-time { font-size: 11px; color: rgba(255,255,255,0.3); }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 20px;
+      color: rgba(255,255,255,0.25);
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    /* FAB */
+    .fab {
+      position: fixed;
+      bottom: 32px; right: 32px;
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 28px;
+      padding: 14px 24px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      animation: pulse-fab 2.5s infinite;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 24px rgba(0,200,255,0.4);
+      z-index: 50;
+    }
+    @keyframes pulse-fab {
+      0%,100% { box-shadow: 0 0 24px rgba(0,200,255,0.4); }
+      50% { box-shadow: 0 0 40px rgba(0,200,255,0.7); }
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #13131A;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      padding: 28px;
+      width: 100%;
+      max-width: 420px;
+      margin: 16px;
+      position: relative;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px; right: 20px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .field input, .field select {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      outline: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--cyan);
+    }
+    .field select option { background: #13131A; }
+
+    .color-swatches {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .swatch {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .swatch.selected {
+      border-color: var(--cyan);
+      transform: scale(1.15);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+    .submit-btn:hover { opacity: 0.9; }
+
+    /* MOBILE */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #0A0A0F;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 0 14px;
+      z-index: 200;
+    }
+    .bottom-nav-inner { display: flex; justify-content: space-around; }
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .bn-item.active { color: var(--cyan); }
+    .bn-icon { font-size: 20px; line-height: 1; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px 16px 90px; }
+      .page-title { font-size: 36px; margin-bottom: 20px; }
+      .bottom-nav { display: block; }
+      .fab { bottom: 80px; right: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">The Garage</div>
+    <a href="index.html" class="nav-link">🏠 Dashboard</a>
+    <a href="collection.html" class="nav-link active">🚗 Collection</a>
+    <a href="rally.html" class="nav-link">
+      <span class="rally-dot"></span> Rally
+    </a>
+    <a href="analytics.html" class="nav-link">📊 Analytics</a>
+    <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
+    <a href="vault.html" class="nav-link">🔒 Vault</a>
+  </nav>
+
+  <main class="main">
+    <h1 class="page-title">
+      <span class="solid">COLLECTION </span><span class="outline">FLEET</span>
+    </h1>
+    <div class="cars-grid" id="cars-grid">
+      <div class="empty-state">Loading...</div>
+    </div>
+  </main>
+
+  <button class="fab" onclick="openModal()">+ ADD MY CAR</button>
+
+  <!-- ADD CAR MODAL -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title">ADD YOUR CAR</div>
+      <div class="field">
+        <label>Your Name</label>
+        <input type="text" id="f-name" placeholder="John Smith">
+      </div>
+      <div class="field">
+        <label>Make</label>
+        <input type="text" id="f-make" placeholder="Lamborghini">
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <input type="text" id="f-model" placeholder="Huracan">
+      </div>
+      <div class="field">
+        <label>Year</label>
+        <input type="number" id="f-year" placeholder="2024" min="1900" max="2099">
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <div class="color-swatches" id="swatches">
+          <div class="swatch" data-color="white" style="background:#FFFFFF"></div>
+          <div class="swatch" data-color="black" style="background:#1a1a1a;border-color:rgba(255,255,255,0.2)"></div>
+          <div class="swatch" data-color="red" style="background:#FF4444"></div>
+          <div class="swatch" data-color="blue" style="background:#3388FF"></div>
+          <div class="swatch" data-color="yellow" style="background:#FFD700"></div>
+          <div class="swatch" data-color="orange" style="background:#FF8C00"></div>
+          <div class="swatch" data-color="green" style="background:#00FF88"></div>
+        </div>
+      </div>
+      <button class="submit-btn" onclick="addCar()">ADD TO GARAGE</button>
+      <div id="modal-error" style="color:var(--red);font-size:12px;margin-top:10px;text-align:center;"></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a href="index.html" class="bn-item"><span class="bn-icon">🏠</span>Home</a>
+      <a href="collection.html" class="bn-item active"><span class="bn-icon">🚗</span>Cars</a>
+      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span>Rally</a>
+      <a href="analytics.html" class="bn-item"><span class="bn-icon">📊</span>Stats</a>
+      <a href="maintenance.html" class="bn-item"><span class="bn-icon">🔧</span>Service</a>
+    </div>
+  </nav>
+
+  <script>
+    const { createClient } = supabase
+    const db = createClient('https://mjmuqhridetyqrytouhe.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qbXVxaHJpZGV0eXFyeXRvdWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTYxNDQsImV4cCI6MjA5MDU5MjE0NH0.QURk9RdMTpXGcVwjcVGG9XQ5xKktPlYa3L9PBmyoYpw')
+
+    function esc(str) {
+      return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+
+    function timeAgo(dateStr) {
+      const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+      if (diff < 60) return 'just now'
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago'
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago'
+      return Math.floor(diff/86400) + 'd ago'
+    }
+
+    function colorHex(name) {
+      const map = { white:'#FFFFFF', black:'#1a1a1a', red:'#FF4444', blue:'#3388FF', yellow:'#FFD700', orange:'#FF8C00', green:'#00FF88' }
+      return map[name?.toLowerCase()] || '#888'
+    }
+
+    let cars = []
+
+    function renderCars() {
+      const grid = document.getElementById('cars-grid')
+      if (cars.length === 0) {
+        grid.innerHTML = '<div class="empty-state">THE GARAGE IS EMPTY. ADD YOUR CAR.</div>'
+        return
+      }
+      grid.innerHTML = cars.map(c => `
+        <div class="car-card">
+          <div class="car-card-top">
+            <div class="car-color-dot" style="background:${colorHex(c.color)}"></div>
+            <div class="car-owner">${esc(c.owner_name)}</div>
+          </div>
+          <div>
+            <div class="car-name">${esc(c.make)} ${esc(c.model)}</div>
+            <div class="car-year">${esc(c.year)}</div>
+          </div>
+          <div class="car-time">Added ${timeAgo(c.created_at)}</div>
+        </div>
+      `).join('')
+    }
+
+    async function loadCars() {
+      const { data } = await db.from('cars').select('*').order('created_at', { ascending: false })
+      cars = data || []
+      renderCars()
+    }
+
+    loadCars()
+
+    db.channel('collection-cars')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cars' }, payload => {
+        if (payload.eventType === 'INSERT') {
+          cars.unshift(payload.new)
+        } else if (payload.eventType === 'DELETE') {
+          cars = cars.filter(c => c.id !== payload.old.id)
+        } else if (payload.eventType === 'UPDATE') {
+          const idx = cars.findIndex(c => c.id === payload.new.id)
+          if (idx !== -1) cars[idx] = payload.new
+        }
+        renderCars()
+      })
+      .subscribe()
+
+    // Modal
+    let selectedColor = ''
+    function openModal() {
+      document.getElementById('modal').classList.add('open')
+      document.getElementById('modal-error').textContent = ''
+    }
+    function closeModal() {
+      document.getElementById('modal').classList.remove('open')
+      document.getElementById('f-name').value = ''
+      document.getElementById('f-make').value = ''
+      document.getElementById('f-model').value = ''
+      document.getElementById('f-year').value = ''
+      selectedColor = ''
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'))
+    }
+
+    document.querySelectorAll('.swatch').forEach(s => {
+      s.addEventListener('click', () => {
+        document.querySelectorAll('.swatch').forEach(x => x.classList.remove('selected'))
+        s.classList.add('selected')
+        selectedColor = s.dataset.color
+      })
+    })
+
+    async function addCar() {
+      const name = document.getElementById('f-name').value.trim()
+      const make = document.getElementById('f-make').value.trim()
+      const model = document.getElementById('f-model').value.trim()
+      const year = document.getElementById('f-year').value.trim()
+      const errEl = document.getElementById('modal-error')
+      errEl.textContent = ''
+
+      if (!name || !make || !model || !year || !selectedColor) {
+        errEl.textContent = 'Please fill all fields and select a color.'
+        return
+      }
+
+      const { data, error } = await db.from('cars').insert({
+        owner_name: name,
+        make,
+        model,
+        year: parseInt(year),
+        color: selectedColor
+      }).select().single()
+
+      if (error) {
+        errEl.textContent = 'Error: ' + error.message
+        return
+      }
+
+      if (data?.id) {
+        localStorage.setItem('garage_car_id', data.id)
+        localStorage.setItem('garage_owner_name', name)
+      }
+      closeModal()
+    }
+
+    // Close on overlay click
+    document.getElementById('modal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeModal()
+    })
+  </script>
+</body>
+</html>

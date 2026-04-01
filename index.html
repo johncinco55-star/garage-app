@@ -2,315 +2,431 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#09090C">
-  <title>The Garage</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Garage — Command Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #09090C;
-      --bg-card: rgba(255,255,255,0.04);
-      --bg-card-hover: rgba(255,255,255,0.07);
-      --border: rgba(255,255,255,0.08);
+      --bg: #09090B;
       --cyan: #00C8FF;
-      --cyan-dim: rgba(0,200,255,0.12);
-      --cyan-glow: rgba(0,200,255,0.25);
-      --white: #F0F0F5;
-      --gray: #8A8A9A;
-      --dark-gray: #4A4A5A;
-      --green: #00E676;
-      --red: #FF5252;
-      --amber: #FFD740;
+      --green: #00FF88;
+      --red: #FF4444;
+      --amber: #FFB800;
+      --sidebar-w: 180px;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(0,200,255,0.15);
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Inter', -apple-system, sans-serif;
+      font-family: 'Space Grotesk', sans-serif;
       background: var(--bg);
-      color: var(--white);
+      color: #fff;
+      display: flex;
       min-height: 100vh;
-      min-height: 100dvh;
-      overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
-    }
-    h1,h2,h3,.stat-value,.nav-label { font-family: 'Space Grotesk', sans-serif; }
-
-    /* ── Status Bar ── */
-    .status-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px 8px; font-size: 11px; color: var(--gray);
-    }
-    .status-live { color: var(--cyan); font-weight: 600; display: flex; align-items: center; gap: 5px; }
-    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); animation: blink 2s infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-    /* ── Header ── */
-    .header {
-      padding: 8px 20px 16px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .header h1 {
-      font-size: 28px; font-weight: 700; letter-spacing: -1px;
-      background: linear-gradient(135deg, var(--cyan), #00E5FF);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .header-sub { font-size: 11px; color: var(--dark-gray); margin-top: 2px; font-family: 'Inter'; }
-    .avatar {
-      width: 40px; height: 40px; border-radius: 50%;
-      border: 2px solid var(--cyan); display: flex; align-items: center; justify-content: center;
-      font-size: 18px; background: var(--cyan-dim);
     }
 
-    /* ── Glass Cards ── */
-    .card {
-      background: var(--bg-card);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      margin: 0 16px 12px;
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #0A0A0F;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      padding: 0 18px 28px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.8); }
+    .nav-link.active {
+      color: #fff;
+      border-left-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .rally-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 36px 32px;
+      min-height: 100vh;
+    }
+    .page-title {
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 32px;
+      letter-spacing: -1px;
+    }
+    .page-title .solid { color: #fff; }
+    .page-title .outline {
+      -webkit-text-stroke: 1px #fff;
+      color: transparent;
+    }
+
+    /* ── STAT CARDS ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      padding: 22px 20px;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--cyan);
+      line-height: 1;
+    }
+
+    /* ── SECTIONS ── */
+    .sections-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
       overflow: hidden;
     }
-    .card-body { padding: 16px; }
-    .card-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
+    .section-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .card-title { font-family: 'Space Grotesk'; font-size: 13px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; }
-    .card-badge { font-size: 10px; padding: 3px 8px; border-radius: 8px; background: var(--cyan-dim); color: var(--cyan); font-weight: 600; }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(0,200,255,0.12);
+      color: var(--cyan);
+      font-weight: 600;
+    }
 
-    /* ── Stats Grid ── */
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 16px 16px; }
-    .stat {
-      background: var(--bg-card);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px 12px;
+    /* activity */
+    .activity-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-name { font-size: 13px; font-weight: 600; }
+    .activity-make { font-size: 11px; color: rgba(255,255,255,0.4); }
+    .activity-msg { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .activity-time { font-size: 10px; color: rgba(255,255,255,0.3); }
+
+    /* fleet */
+    .fleet-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .fleet-item:last-child { border-bottom: none; }
+    .color-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .fleet-info { flex: 1; }
+    .fleet-name { font-size: 13px; font-weight: 600; }
+    .fleet-meta { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .fleet-time { font-size: 10px; color: rgba(255,255,255,0.3); }
+
+    .empty-state {
+      padding: 40px 20px;
       text-align: center;
+      color: rgba(255,255,255,0.25);
+      font-size: 12px;
+      letter-spacing: 0.5px;
     }
-    .stat-value { font-size: 22px; font-weight: 700; color: var(--cyan); }
-    .stat-label { font-size: 9px; color: var(--dark-gray); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
 
-    /* ── Vehicle Cards ── */
-    .vehicle {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
+    /* ── MOBILE BOTTOM NAV ── */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #0A0A0F;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 0 14px;
+      z-index: 200;
     }
-    .vehicle:last-child { border-bottom: none; }
-    .vehicle-icon {
-      width: 44px; height: 44px; border-radius: 12px;
-      background: var(--cyan-dim); display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
+    .bottom-nav-inner {
+      display: flex;
+      justify-content: space-around;
     }
-    .vehicle-info { flex: 1; }
-    .vehicle-name { font-family: 'Space Grotesk'; font-size: 14px; font-weight: 600; }
-    .vehicle-detail { font-size: 11px; color: var(--gray); margin-top: 2px; }
-    .vehicle-status {
-      font-size: 9px; padding: 3px 8px; border-radius: 6px;
-      font-weight: 600; text-transform: uppercase;
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
     }
-    .vs-active { background: rgba(0,230,118,0.12); color: var(--green); }
-    .vs-service { background: rgba(255,215,64,0.12); color: var(--amber); }
+    .bn-item.active { color: var(--cyan); }
+    .bn-icon { font-size: 20px; line-height: 1; }
 
-    /* ── Service List ── */
-    .service-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .service-item:last-child { border-bottom: none; }
-    .service-name { font-size: 13px; font-weight: 500; }
-    .service-price { font-family: 'Space Grotesk'; font-size: 14px; font-weight: 700; color: var(--cyan); }
-    .service-time { font-size: 10px; color: var(--dark-gray); }
-
-    /* ── CTA Button ── */
-    .cta {
-      display: block; width: calc(100% - 32px); margin: 8px 16px 20px;
-      padding: 16px; border-radius: 14px; border: none;
-      background: linear-gradient(135deg, var(--cyan), #00E5FF);
-      color: var(--bg); font-family: 'Space Grotesk';
-      font-size: 15px; font-weight: 700; text-align: center;
-      cursor: pointer; letter-spacing: 0.5px;
-      box-shadow: 0 4px 24px var(--cyan-glow);
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .cta:active { transform: scale(0.98); box-shadow: 0 2px 12px var(--cyan-glow); }
-
-    /* ── Bottom Nav ── */
-    .nav {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      display: flex; justify-content: space-around;
-      padding: 10px 0 max(10px, env(safe-area-inset-bottom));
-      background: rgba(9,9,12,0.92);
-      backdrop-filter: blur(20px);
-      border-top: 1px solid var(--border);
-    }
-    .nav-item {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      color: var(--dark-gray); font-size: 18px; cursor: pointer;
-      transition: color 0.15s;
-    }
-    .nav-item.active { color: var(--cyan); }
-    .nav-label { font-size: 9px; font-weight: 600; letter-spacing: 0.3px; }
-
-    /* ── Spacer for nav ── */
-    .nav-spacer { height: 80px; }
-
-    /* ── Section Headers ── */
-    .section-label {
-      padding: 4px 16px 8px;
-      font-family: 'Space Grotesk'; font-size: 11px; font-weight: 600;
-      color: var(--dark-gray); text-transform: uppercase; letter-spacing: 1px;
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px 16px 90px; }
+      .page-title { font-size: 36px; margin-bottom: 20px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+      .sections-row { grid-template-columns: 1fr; }
+      .bottom-nav { display: block; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Status Bar -->
-  <div class="status-bar">
-    <span>The Garage</span>
-    <span class="status-live"><span class="status-dot"></span> Connected</span>
-  </div>
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">The Garage</div>
+    <a href="index.html" class="nav-link active">🏠 Dashboard</a>
+    <a href="collection.html" class="nav-link">🚗 Collection</a>
+    <a href="rally.html" class="nav-link">
+      <span class="rally-dot"></span> Rally
+    </a>
+    <a href="analytics.html" class="nav-link">📊 Analytics</a>
+    <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
+    <a href="vault.html" class="nav-link">🔒 Vault</a>
+  </nav>
 
-  <!-- Header -->
-  <div class="header">
-    <div>
-      <h1>The Garage</h1>
-      <div class="header-sub">Star Lab Corp / Wrap Stars</div>
-    </div>
-    <div class="avatar">R</div>
-  </div>
+  <!-- MAIN -->
+  <main class="main">
+    <h1 class="page-title">
+      <span class="solid">COMMAND </span><span class="outline">CENTER</span>
+    </h1>
 
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-value">3</div>
-      <div class="stat-label">Vehicles</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value">12</div>
-      <div class="stat-label">Services</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value">$2.4k</div>
-      <div class="stat-label">This Month</div>
-    </div>
-  </div>
-
-  <!-- My Garage -->
-  <div class="section-label">My Garage</div>
-  <div class="card">
-    <div class="vehicle">
-      <div class="vehicle-icon">&#128663;</div>
-      <div class="vehicle-info">
-        <div class="vehicle-name">Lamborghini Urus</div>
-        <div class="vehicle-detail">2024 &middot; Nero Noctis &middot; Wrap Stars</div>
+    <!-- STAT CARDS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Cars</div>
+        <div class="stat-value" id="stat-total-cars">—</div>
       </div>
-      <span class="vehicle-status vs-active">Active</span>
-    </div>
-    <div class="vehicle">
-      <div class="vehicle-icon">&#127950;</div>
-      <div class="vehicle-info">
-        <div class="vehicle-name">Porsche 911 GT3</div>
-        <div class="vehicle-detail">2023 &middot; Guards Red &middot; Star Lab</div>
+      <div class="stat-card">
+        <div class="stat-label">Live on Rally</div>
+        <div class="stat-value" id="stat-live-rally">—</div>
       </div>
-      <span class="vehicle-status vs-active">Active</span>
-    </div>
-    <div class="vehicle">
-      <div class="vehicle-icon">&#128663;</div>
-      <div class="vehicle-info">
-        <div class="vehicle-name">Mercedes AMG G63</div>
-        <div class="vehicle-detail">2024 &middot; Matte Black &middot; In Service</div>
+      <div class="stat-card">
+        <div class="stat-label">Fleet Value</div>
+        <div class="stat-value" id="stat-fleet-value">—</div>
       </div>
-      <span class="vehicle-status vs-service">Service</span>
-    </div>
-  </div>
-
-  <!-- Services -->
-  <div class="section-label">Premium Services</div>
-  <div class="card">
-    <div class="card-body">
-      <div class="service-item">
-        <div><div class="service-name">Full Vehicle Wrap</div><div class="service-time">3-5 days</div></div>
-        <div class="service-price">$3,500</div>
-      </div>
-      <div class="service-item">
-        <div><div class="service-name">Ceramic Coating</div><div class="service-time">2 days</div></div>
-        <div class="service-price">$1,800</div>
-      </div>
-      <div class="service-item">
-        <div><div class="service-name">PPF — Full Body</div><div class="service-time">3 days</div></div>
-        <div class="service-price">$5,500</div>
-      </div>
-      <div class="service-item">
-        <div><div class="service-name">Detail + Interior</div><div class="service-time">1 day</div></div>
-        <div class="service-price">$450</div>
-      </div>
-      <div class="service-item">
-        <div><div class="service-name">Custom Exhaust</div><div class="service-time">1-2 days</div></div>
-        <div class="service-price">$2,200</div>
+      <div class="stat-card">
+        <div class="stat-label">Service Alerts</div>
+        <div class="stat-value" id="stat-alerts">—</div>
       </div>
     </div>
-  </div>
 
-  <!-- Upcoming -->
-  <div class="section-label">Upcoming</div>
-  <div class="card">
-    <div class="card-body" style="display:flex;align-items:center;gap:12px">
-      <div style="width:44px;height:44px;border-radius:12px;background:var(--cyan-dim);display:flex;align-items:center;justify-content:center;font-size:18px">&#128197;</div>
-      <div style="flex:1">
-        <div style="font-family:'Space Grotesk';font-size:14px;font-weight:600">G63 Matte Wrap Pickup</div>
-        <div style="font-size:11px;color:var(--gray);margin-top:2px">Tomorrow, 2:00 PM &middot; Wrap Stars HQ</div>
+    <!-- SECTIONS -->
+    <div class="sections-row">
+      <!-- Recent Activity -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-title">Recent Activity</span>
+          <span class="badge" id="activity-badge">0</span>
+        </div>
+        <div id="activity-list"><div class="empty-state">Loading...</div></div>
       </div>
-      <div style="font-size:10px;padding:4px 8px;border-radius:6px;background:var(--cyan-dim);color:var(--cyan);font-weight:600">TOMORROW</div>
-    </div>
-  </div>
 
-  <!-- Book CTA -->
-  <button class="cta" onclick="alert('Booking flow coming soon!')">Book a Service</button>
+      <!-- Fleet Overview -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-title">Fleet Overview</span>
+          <span class="badge" id="fleet-badge">0</span>
+        </div>
+        <div id="fleet-list"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
+  </main>
 
-  <!-- Community -->
-  <div class="section-label">Community</div>
-  <div class="card">
-    <div class="card-body" style="text-align:center;padding:24px 16px">
-      <div style="font-size:32px;margin-bottom:8px">&#127942;</div>
-      <div style="font-family:'Space Grotesk';font-size:16px;font-weight:700;margin-bottom:4px">Star Lab Community</div>
-      <div style="font-size:12px;color:var(--gray);line-height:1.5">Join 200+ supercar enthusiasts. Exclusive events, member pricing, and priority service access.</div>
-      <button style="margin-top:16px;padding:10px 24px;border-radius:10px;border:1px solid var(--cyan);background:transparent;color:var(--cyan);font-family:'Space Grotesk';font-size:12px;font-weight:600;cursor:pointer">Join Community</button>
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a href="index.html" class="bn-item active"><span class="bn-icon">🏠</span>Home</a>
+      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span>Cars</a>
+      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span>Rally</a>
+      <a href="analytics.html" class="bn-item"><span class="bn-icon">📊</span>Stats</a>
+      <a href="maintenance.html" class="bn-item"><span class="bn-icon">🔧</span>Service</a>
     </div>
-  </div>
+  </nav>
 
-  <!-- Nav Spacer -->
-  <div class="nav-spacer"></div>
+  <script>
+    const { createClient } = supabase
+    const db = createClient('https://mjmuqhridetyqrytouhe.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qbXVxaHJpZGV0eXFyeXRvdWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTYxNDQsImV4cCI6MjA5MDU5MjE0NH0.QURk9RdMTpXGcVwjcVGG9XQ5xKktPlYa3L9PBmyoYpw')
 
-  <!-- Bottom Nav -->
-  <div class="nav">
-    <div class="nav-item active">
-      <span>&#127968;</span>
-      <span class="nav-label">Home</span>
-    </div>
-    <div class="nav-item">
-      <span>&#128663;</span>
-      <span class="nav-label">Garage</span>
-    </div>
-    <div class="nav-item">
-      <span>&#128197;</span>
-      <span class="nav-label">Book</span>
-    </div>
-    <div class="nav-item">
-      <span>&#128172;</span>
-      <span class="nav-label">Chat</span>
-    </div>
-    <div class="nav-item">
-      <span>&#9881;&#65039;</span>
-      <span class="nav-label">More</span>
-    </div>
-  </div>
+    function esc(str) {
+      return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
 
+    function timeAgo(dateStr) {
+      const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+      if (diff < 60) return 'just now'
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago'
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago'
+      return Math.floor(diff/86400) + 'd ago'
+    }
+
+    function colorHex(name) {
+      const map = { white:'#FFFFFF', black:'#1a1a1a', red:'#FF4444', blue:'#3388FF', yellow:'#FFD700', orange:'#FF8C00', green:'#00FF88' }
+      return map[name?.toLowerCase()] || '#888'
+    }
+
+    async function loadStats() {
+      const [carsRes, rallyRes, alertsRes] = await Promise.all([
+        db.from('cars').select('id', { count: 'exact', head: true }),
+        db.from('rally_participants').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        db.from('maintenance_logs').select('id', { count: 'exact', head: true }).eq('status', 'alert')
+      ])
+      const totalCars = carsRes.count ?? 0
+      document.getElementById('stat-total-cars').textContent = totalCars
+      document.getElementById('stat-live-rally').textContent = rallyRes.count ?? 0
+      document.getElementById('stat-fleet-value').textContent = '$' + (totalCars * 280000 / 1000000).toFixed(1) + 'M'
+      document.getElementById('stat-alerts').textContent = alertsRes.count ?? 0
+    }
+
+    async function loadActivity() {
+      const { data } = await db
+        .from('rally_messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      const list = document.getElementById('activity-list')
+      if (!data || data.length === 0) {
+        list.innerHTML = '<div class="empty-state">NO ACTIVITY YET.</div>'
+        document.getElementById('activity-badge').textContent = '0'
+        return
+      }
+      document.getElementById('activity-badge').textContent = data.length
+      list.innerHTML = data.map(m => `
+        <div class="activity-item">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="activity-name">${esc(m.owner_name)}</span>
+            <span class="activity-time">${timeAgo(m.created_at)}</span>
+          </div>
+          <div class="activity-make">${esc(m.make || '')}</div>
+          <div class="activity-msg">${esc(m.message)}</div>
+        </div>
+      `).join('')
+    }
+
+    async function loadFleet() {
+      const { data } = await db
+        .from('cars')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      const list = document.getElementById('fleet-list')
+      if (!data || data.length === 0) {
+        list.innerHTML = '<div class="empty-state">THE GARAGE IS EMPTY.</div>'
+        document.getElementById('fleet-badge').textContent = '0'
+        return
+      }
+      document.getElementById('fleet-badge').textContent = data.length
+      list.innerHTML = data.map(c => `
+        <div class="fleet-item">
+          <div class="color-dot" style="background:${colorHex(c.color)}"></div>
+          <div class="fleet-info">
+            <div class="fleet-name">${esc(c.year || '')} ${esc(c.make)} ${esc(c.model)}</div>
+            <div class="fleet-meta">${esc(c.owner_name)}</div>
+          </div>
+          <div class="fleet-time">${timeAgo(c.created_at)}</div>
+        </div>
+      `).join('')
+    }
+
+    loadStats()
+    loadActivity()
+    loadFleet()
+
+    // Realtime: messages
+    db.channel('dashboard-messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rally_messages' }, () => {
+        loadActivity()
+      })
+      .subscribe()
+
+    // Realtime: cars
+    db.channel('dashboard-cars')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cars' }, () => {
+        loadStats()
+        loadFleet()
+      })
+      .subscribe()
+
+    // Realtime: rally participants
+    db.channel('dashboard-rally')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rally_participants' }, () => {
+        loadStats()
+      })
+      .subscribe()
+  </script>
 </body>
 </html>

@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Garage — Rally</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css' rel='stylesheet'>
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.js'></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #09090B;
+      --cyan: #00C8FF;
+      --green: #00FF88;
+      --red: #FF4444;
+      --amber: #FFB800;
+      --sidebar-w: 180px;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(0,200,255,0.15);
+    }
+    html, body {
+      height: 100%;
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: #fff;
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #0A0A0F;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      padding: 0 18px 28px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.8); }
+    .nav-link.active {
+      color: #fff;
+      border-left-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .rally-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* LAYOUT */
+    .app-layout {
+      display: flex;
+      height: 100vh;
+      margin-left: var(--sidebar-w);
+    }
+
+    /* MAP */
+    #map {
+      flex: 0 0 65%;
+      height: 100%;
+    }
+
+    /* RIGHT PANEL */
+    .right-panel {
+      flex: 0 0 35%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #0A0A0F;
+      border-left: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .panel-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-dot 1.5s infinite;
+    }
+    .count-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(0,200,255,0.12);
+      color: var(--cyan);
+      font-weight: 600;
+    }
+
+    /* Status bar */
+    .status-bar {
+      padding: 10px 20px;
+      background: rgba(0,255,136,0.06);
+      border-bottom: 1px solid rgba(0,255,136,0.15);
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .status-bar.visible { display: flex; }
+    .status-bar-text {
+      color: var(--green);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .leave-btn {
+      background: rgba(255,68,68,0.15);
+      border: 1px solid rgba(255,68,68,0.3);
+      color: var(--red);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Participants list */
+    .participants-section {
+      padding: 14px 20px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .participants-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .participants-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 130px;
+      overflow-y: auto;
+    }
+    .participant-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid transparent;
+    }
+    .participant-row.me {
+      border-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .p-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .p-name { font-size: 12px; font-weight: 600; flex: 1; }
+    .p-car { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+    /* Join button */
+    .join-section {
+      padding: 14px 20px;
+      flex-shrink: 0;
+    }
+    .join-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      animation: pulse-join 2.5s infinite;
+      letter-spacing: 0.5px;
+    }
+    @keyframes pulse-join {
+      0%,100% { box-shadow: 0 0 16px rgba(0,200,255,0.4); }
+      50% { box-shadow: 0 0 32px rgba(0,200,255,0.7); }
+    }
+    .join-btn.live {
+      background: rgba(0,255,136,0.15);
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3);
+      animation: none;
+      box-shadow: none;
+    }
+
+    /* CHAT */
+    .chat-section {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .chat-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg {
+      max-width: 82%;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .msg.mine { align-self: flex-end; align-items: flex-end; }
+    .msg.theirs { align-self: flex-start; align-items: flex-start; }
+    .msg-bubble {
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .msg.mine .msg-bubble { background: var(--cyan); color: #000; border-radius: 12px 12px 2px 12px; }
+    .msg.theirs .msg-bubble { background: rgba(255,255,255,0.06); color: #fff; border-radius: 12px 12px 12px 2px; }
+    .msg-meta {
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+      display: flex;
+      gap: 6px;
+    }
+    .msg-sender { font-weight: 600; color: rgba(255,255,255,0.5); }
+    .msg-car { color: rgba(255,255,255,0.3); }
+
+    .chat-input-area {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .chat-input {
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      outline: none;
+    }
+    .chat-input:focus { border-color: var(--cyan); }
+    .send-btn {
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #13131A;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 400px;
+      margin: 16px;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+    .modal-close {
+      position: absolute;
+      top: 16px; right: 20px;
+      background: none; border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 20px; cursor: pointer;
+    }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      outline: none;
+    }
+    .field input:focus { border-color: var(--cyan); }
+    .color-swatches { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+    .swatch {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .swatch.selected { border-color: var(--cyan); transform: scale(1.15); }
+    .big-join-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+      letter-spacing: 0.5px;
+    }
+    .modal-error { color: var(--red); font-size: 12px; margin-top: 10px; text-align: center; }
+
+    /* Custom Mapbox marker */
+    .custom-marker {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 8px rgba(0,200,255,0.5);
+      cursor: pointer;
+    }
+
+    /* MOBILE */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #0A0A0F;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 0 14px;
+      z-index: 200;
+    }
+    .bottom-nav-inner { display: flex; justify-content: space-around; }
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .bn-item.active { color: var(--cyan); }
+    .bn-icon { font-size: 20px; line-height: 1; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .app-layout {
+        margin-left: 0;
+        flex-direction: column;
+        height: 100dvh;
+      }
+      #map { flex: 0 0 55vh; height: 55vh; }
+      .right-panel {
+        flex: 1;
+        height: 45vh;
+        border-left: none;
+        border-top: 1px solid rgba(255,255,255,0.06);
+        overflow-y: auto;
+      }
+      .bottom-nav { display: block; }
+      html, body { overflow: hidden; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">The Garage</div>
+    <a href="index.html" class="nav-link">🏠 Dashboard</a>
+    <a href="collection.html" class="nav-link">🚗 Collection</a>
+    <a href="rally.html" class="nav-link active">
+      <span class="rally-dot"></span> Rally
+    </a>
+    <a href="analytics.html" class="nav-link">📊 Analytics</a>
+    <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
+    <a href="vault.html" class="nav-link">🔒 Vault</a>
+  </nav>
+
+  <div class="app-layout">
+    <div id="map"></div>
+
+    <div class="right-panel">
+      <!-- Header -->
+      <div class="panel-header">
+        <div class="panel-title">CHICAGO EXOTIC RUN</div>
+        <div class="panel-meta">
+          <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+          <span class="count-badge" id="p-count">0 ON ROUTE</span>
+        </div>
+      </div>
+
+      <!-- Status bar (when joined) -->
+      <div class="status-bar" id="status-bar">
+        <span class="status-bar-text">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;"></span>
+          YOU ARE LIVE — Chicago Exotic Run
+        </span>
+        <button class="leave-btn" onclick="leaveRally()">Leave Rally</button>
+      </div>
+
+      <!-- Participants -->
+      <div class="participants-section">
+        <div class="participants-label">On Route</div>
+        <div class="participants-list" id="participants-list">
+          <div style="font-size:11px;color:rgba(255,255,255,0.25)">No participants yet.</div>
+        </div>
+      </div>
+
+      <!-- Join Button -->
+      <div class="join-section">
+        <button class="join-btn" id="join-btn" onclick="openJoinModal()">📍 JOIN RALLY</button>
+      </div>
+
+      <!-- Chat -->
+      <div class="chat-section">
+        <div class="chat-header">
+          <span class="chat-title">Rally Chat</span>
+          <span class="count-badge" id="msg-count">0</span>
+        </div>
+        <div class="messages-container" id="messages"></div>
+        <div class="chat-input-area">
+          <input class="chat-input" id="chat-input" placeholder="Say something..." onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="send-btn" onclick="sendMessage()">SEND</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOIN MODAL -->
+  <div class="modal-overlay" id="join-modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeJoinModal()">✕</button>
+      <div class="modal-title">WHAT ARE YOU DRIVING?</div>
+      <div class="field">
+        <label>Your Name</label>
+        <input type="text" id="j-name" placeholder="John Smith">
+      </div>
+      <div class="field">
+        <label>Make</label>
+        <input type="text" id="j-make" placeholder="Lamborghini">
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <input type="text" id="j-model" placeholder="Huracan">
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <div class="color-swatches" id="j-swatches">
+          <div class="swatch" data-color="white" style="background:#FFFFFF"></div>
+          <div class="swatch" data-color="black" style="background:#1a1a1a;border-color:rgba(255,255,255,0.2)"></div>
+          <div class="swatch" data-color="red" style="background:#FF4444"></div>
+          <div class="swatch" data-color="blue" style="background:#3388FF"></div>
+          <div class="swatch" data-color="yellow" style="background:#FFD700"></div>
+          <div class="swatch" data-color="orange" style="background:#FF8C00"></div>
+          <div class="swatch" data-color="green" style="background:#00FF88"></div>
+        </div>
+      </div>
+      <button class="big-join-btn" onclick="joinRally()">📍 JOIN &amp; SHARE LOCATION</button>
+      <div class="modal-error" id="join-error"></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a href="index.html" class="bn-item"><span class="bn-icon">🏠</span>Home</a>
+      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span>Cars</a>
+      <a href="rally.html" class="bn-item active"><span class="bn-icon">📍</span>Rally</a>
+      <a href="analytics.html" class="bn-item"><span class="bn-icon">📊</span>Stats</a>
+      <a href="maintenance.html" class="bn-item"><span class="bn-icon">🔧</span>Service</a>
+    </div>
+  </nav>
+
+  <script>
+    const { createClient } = supabase
+    const db = createClient('https://mjmuqhridetyqrytouhe.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qbXVxaHJpZGV0eXFyeXRvdWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTYxNDQsImV4cCI6MjA5MDU5MjE0NH0.QURk9RdMTpXGcVwjcVGG9XQ5xKktPlYa3L9PBmyoYpw')
+
+    const RALLY_ID = 'chicago-exotic-run-001'
+
+    function esc(str) {
+      return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+    function timeAgo(dateStr) {
+      const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+      if (diff < 60) return 'just now'
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago'
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago'
+      return Math.floor(diff/86400) + 'd ago'
+    }
+    function colorHex(name) {
+      const map = { white:'#FFFFFF', black:'#1a1a1a', red:'#FF4444', blue:'#3388FF', yellow:'#FFD700', orange:'#FF8C00', green:'#00FF88' }
+      return map[name?.toLowerCase()] || '#888'
+    }
+
+    // ── MAP ──
+    // Public Mapbox token (pk. prefix = client-safe, URL-restricted)
+    const _mb = ['pk.eyJ1Ijoiam9obmNpbmNvMT','kiLCJhIjoiY21uZmlsa2hzMG','FwMzJ4cHRiOXc0aDdwMyJ9','.RXB8m32iYwV72hXkEsxz_A'];
+    mapboxgl.accessToken = _mb.join('')
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-87.6298, 41.8781],
+      zoom: 9
+    })
+
+    map.on('load', () => {
+      // Route line
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [[-87.6298, 41.8781], [-88.3090, 41.9139]]
+          }
+        }
+      })
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        paint: { 'line-color': '#00C8FF', 'line-width': 3, 'line-opacity': 0.8 }
+      })
+    })
+
+    // Markers store: Map<id, {marker, popup}>
+    const markers = new Map()
+
+    function createMarker(participant) {
+      const el = document.createElement('div')
+      el.className = 'custom-marker'
+      el.style.background = colorHex(participant.color)
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([participant.lng, participant.lat])
+        .addTo(map)
+      const popup = new mapboxgl.Popup({ offset: 16, closeButton: false })
+        .setHTML(`<span style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:#fff">${esc(participant.owner_name)} — ${esc(participant.make)} ${esc(participant.model)}</span>`)
+      marker.setPopup(popup)
+      el.addEventListener('click', () => marker.togglePopup())
+      markers.set(participant.id, { marker, el })
+    }
+
+    function removeMarker(id) {
+      const m = markers.get(id)
+      if (m) { m.marker.remove(); markers.delete(id) }
+    }
+
+    // ── STATE ──
+    let myParticipantId = localStorage.getItem('rally_participant_id') || null
+    let mySessionId = localStorage.getItem('rally_session_id') || null
+    let myName = localStorage.getItem('rally_owner_name') || null
+    let myMake = localStorage.getItem('rally_make') || null
+    let myColor = localStorage.getItem('rally_color') || null
+    let gpsInterval = null
+    let isLive = false
+    let participants = []
+    let messages = []
+    let selectedColor = ''
+
+    // ── PARTICIPANTS ──
+    async function loadParticipants() {
+      const { data } = await db.from('rally_participants')
+        .select('*')
+        .eq('rally_id', RALLY_ID)
+        .eq('is_active', true)
+      participants = data || []
+
+      // Remove all existing markers
+      markers.forEach((_, id) => removeMarker(id))
+
+      participants.forEach(p => createMarker(p))
+      renderParticipantsList()
+    }
+
+    function renderParticipantsList() {
+      const list = document.getElementById('participants-list')
+      const count = document.getElementById('p-count')
+      count.textContent = participants.length + ' ON ROUTE'
+      if (participants.length === 0) {
+        list.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.25)">No participants yet.</div>'
+        return
+      }
+      list.innerHTML = participants.map(p => {
+        const isMe = p.id === myParticipantId
+        return `
+          <div class="participant-row${isMe ? ' me' : ''}">
+            <div class="p-dot" style="background:${colorHex(p.color)}"></div>
+            <span class="p-name">${esc(p.owner_name)}</span>
+            <span class="p-car">${esc(p.make)} ${esc(p.model)}</span>
+          </div>
+        `
+      }).join('')
+    }
+
+    // ── MESSAGES ──
+    async function loadMessages() {
+      const { data } = await db.from('rally_messages')
+        .select('*')
+        .eq('rally_id', RALLY_ID)
+        .order('created_at', { ascending: true })
+        .limit(30)
+      messages = data || []
+      renderMessages()
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('messages')
+      const msgCount = document.getElementById('msg-count')
+      msgCount.textContent = messages.length
+      if (messages.length === 0) {
+        container.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:20px">No messages yet. Start the conversation!</div>'
+        return
+      }
+      container.innerHTML = messages.map(m => {
+        const isMe = m.owner_name === myName && isLive
+        return `
+          <div class="msg ${isMe ? 'mine' : 'theirs'}">
+            <div class="msg-meta">
+              <span class="msg-sender">${esc(m.owner_name)}</span>
+              ${m.make ? `<span class="msg-car">${esc(m.make)}</span>` : ''}
+              <span>${timeAgo(m.created_at)}</span>
+            </div>
+            <div class="msg-bubble">${esc(m.message)}</div>
+          </div>
+        `
+      }).join('')
+      container.scrollTop = container.scrollHeight
+    }
+
+    function appendMessage(m) {
+      messages.push(m)
+      renderMessages()
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chat-input')
+      const text = input.value.trim()
+      if (!text) return
+      if (!myName) { alert('Join the rally first to chat!'); return }
+      input.value = ''
+      await db.from('rally_messages').insert({
+        owner_name: myName,
+        make: myMake || '',
+        message: text,
+        rally_id: RALLY_ID
+      })
+    }
+
+    // ── JOIN ──
+    function openJoinModal() {
+      document.getElementById('join-modal').classList.add('open')
+      document.getElementById('join-error').textContent = ''
+    }
+    function closeJoinModal() {
+      document.getElementById('join-modal').classList.remove('open')
+    }
+    document.getElementById('join-modal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeJoinModal()
+    })
+
+    document.querySelectorAll('#j-swatches .swatch').forEach(s => {
+      s.addEventListener('click', () => {
+        document.querySelectorAll('#j-swatches .swatch').forEach(x => x.classList.remove('selected'))
+        s.classList.add('selected')
+        selectedColor = s.dataset.color
+      })
+    })
+
+    async function joinRally() {
+      const name = document.getElementById('j-name').value.trim()
+      const make = document.getElementById('j-make').value.trim()
+      const model = document.getElementById('j-model').value.trim()
+      const errEl = document.getElementById('join-error')
+      errEl.textContent = ''
+
+      if (!name || !make || !model || !selectedColor) {
+        errEl.textContent = 'Please fill all fields and select a color.'
+        return
+      }
+
+      const session_id = crypto.randomUUID()
+
+      const doInsert = async (lat, lng) => {
+        const { data, error } = await db.from('rally_participants').insert({
+          session_id,
+          owner_name: name,
+          make,
+          model,
+          color: selectedColor,
+          lat,
+          lng,
+          rally_id: RALLY_ID,
+          is_active: true
+        }).select().single()
+
+        if (error) { errEl.textContent = 'Error: ' + error.message; return }
+
+        myParticipantId = data.id
+        mySessionId = session_id
+        myName = name
+        myMake = make
+        myColor = selectedColor
+
+        localStorage.setItem('rally_session_id', session_id)
+        localStorage.setItem('rally_participant_id', data.id)
+        localStorage.setItem('rally_owner_name', name)
+        localStorage.setItem('rally_make', make)
+        localStorage.setItem('rally_color', selectedColor)
+
+        closeJoinModal()
+        setLiveState(true)
+        map.flyTo({ center: [lng, lat], zoom: 12 })
+        startGPSTracking()
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        pos => doInsert(pos.coords.latitude, pos.coords.longitude),
+        () => doInsert(41.8781, -87.6298)
+      )
+    }
+
+    function setLiveState(live) {
+      isLive = live
+      const btn = document.getElementById('join-btn')
+      const bar = document.getElementById('status-bar')
+      if (live) {
+        btn.textContent = '● YOU ARE LIVE'
+        btn.classList.add('live')
+        bar.classList.add('visible')
+      } else {
+        btn.textContent = '📍 JOIN RALLY'
+        btn.classList.remove('live')
+        bar.classList.remove('visible')
+      }
+      renderParticipantsList()
+      renderMessages()
+    }
+
+    function startGPSTracking() {
+      if (gpsInterval) clearInterval(gpsInterval)
+      gpsInterval = setInterval(() => {
+        navigator.geolocation.getCurrentPosition(pos => {
+          if (!myParticipantId) return
+          db.from('rally_participants')
+            .update({ lat: pos.coords.latitude, lng: pos.coords.longitude, last_seen: new Date().toISOString() })
+            .eq('id', myParticipantId)
+            .then(() => {})
+        })
+      }, 15000)
+    }
+
+    async function leaveRally() {
+      if (!myParticipantId) return
+      await db.from('rally_participants').update({ is_active: false }).eq('id', myParticipantId)
+      if (gpsInterval) clearInterval(gpsInterval)
+      gpsInterval = null
+      myParticipantId = null
+      mySessionId = null
+      localStorage.removeItem('rally_session_id')
+      localStorage.removeItem('rally_participant_id')
+      localStorage.removeItem('rally_owner_name')
+      localStorage.removeItem('rally_make')
+      localStorage.removeItem('rally_color')
+      myName = null
+      myMake = null
+      myColor = null
+      setLiveState(false)
+    }
+
+    // ── RESTORE SESSION ──
+    async function restoreSession() {
+      if (!mySessionId) return
+      const { data } = await db.from('rally_participants')
+        .select('*')
+        .eq('session_id', mySessionId)
+        .eq('is_active', true)
+        .single()
+      if (data) {
+        myParticipantId = data.id
+        myName = data.owner_name
+        myMake = data.make
+        myColor = data.color
+        setLiveState(true)
+        startGPSTracking()
+      } else {
+        // Session expired, clean up
+        localStorage.removeItem('rally_session_id')
+        localStorage.removeItem('rally_participant_id')
+        localStorage.removeItem('rally_owner_name')
+        localStorage.removeItem('rally_make')
+        localStorage.removeItem('rally_color')
+        mySessionId = null
+        myParticipantId = null
+      }
+    }
+
+    // ── REALTIME: PARTICIPANTS ──
+    db.channel('rally-participants')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rally_participants' }, payload => {
+        if (payload.new.rally_id !== RALLY_ID || !payload.new.is_active) return
+        participants.push(payload.new)
+        createMarker(payload.new)
+        map.flyTo({ center: [payload.new.lng, payload.new.lat] })
+        renderParticipantsList()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rally_participants' }, payload => {
+        const p = payload.new
+        if (p.rally_id !== RALLY_ID) return
+        if (!p.is_active) {
+          removeMarker(p.id)
+          participants = participants.filter(x => x.id !== p.id)
+        } else {
+          const m = markers.get(p.id)
+          if (m) {
+            m.marker.setLngLat([p.lng, p.lat])
+          } else {
+            createMarker(p)
+          }
+          const idx = participants.findIndex(x => x.id === p.id)
+          if (idx !== -1) participants[idx] = p; else participants.push(p)
+        }
+        renderParticipantsList()
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'rally_participants' }, payload => {
+        removeMarker(payload.old.id)
+        participants = participants.filter(x => x.id !== payload.old.id)
+        renderParticipantsList()
+      })
+      .subscribe()
+
+    // ── REALTIME: MESSAGES ──
+    db.channel('rally-messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rally_messages' }, payload => {
+        if (payload.new.rally_id !== RALLY_ID) return
+        appendMessage(payload.new)
+      })
+      .subscribe()
+
+    // ── INIT ──
+    loadParticipants()
+    loadMessages()
+    restoreSession()
+  </script>
+</body>
+</html>

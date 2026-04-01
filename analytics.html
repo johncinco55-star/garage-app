@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Garage — Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #09090B;
+      --cyan: #00C8FF;
+      --green: #00FF88;
+      --red: #FF4444;
+      --amber: #FFB800;
+      --sidebar-w: 180px;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(0,200,255,0.15);
+    }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: #fff;
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #0A0A0F;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      padding: 0 18px 28px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.8); }
+    .nav-link.active {
+      color: #fff;
+      border-left-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .rally-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 36px 32px;
+    }
+    .page-title {
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 32px;
+      letter-spacing: -1px;
+    }
+    .page-title .solid { color: #fff; }
+    .page-title .outline {
+      -webkit-text-stroke: 1px #fff;
+      color: transparent;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      padding: 22px 20px;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--cyan);
+      line-height: 1;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      padding: 20px;
+    }
+    .chart-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .chart-wrapper {
+      position: relative;
+      height: 220px;
+    }
+
+    /* MOBILE */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #0A0A0F;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 0 14px;
+      z-index: 200;
+    }
+    .bottom-nav-inner { display: flex; justify-content: space-around; }
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .bn-item.active { color: var(--cyan); }
+    .bn-icon { font-size: 20px; line-height: 1; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px 16px 90px; }
+      .page-title { font-size: 36px; margin-bottom: 20px; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .bottom-nav { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">The Garage</div>
+    <a href="index.html" class="nav-link">🏠 Dashboard</a>
+    <a href="collection.html" class="nav-link">🚗 Collection</a>
+    <a href="rally.html" class="nav-link">
+      <span class="rally-dot"></span> Rally
+    </a>
+    <a href="analytics.html" class="nav-link active">📊 Analytics</a>
+    <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
+    <a href="vault.html" class="nav-link">🔒 Vault</a>
+  </nav>
+
+  <main class="main">
+    <h1 class="page-title">
+      <span class="solid">ANALYTICS </span><span class="outline">FLEET INTEL</span>
+    </h1>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Cars</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Rally Members</div>
+        <div class="stat-value" id="stat-rally">—</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Cars by Make</div>
+        <div class="chart-wrapper">
+          <canvas id="make-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Registrations Over Time</div>
+        <div class="chart-wrapper">
+          <canvas id="time-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a href="index.html" class="bn-item"><span class="bn-icon">🏠</span>Home</a>
+      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span>Cars</a>
+      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span>Rally</a>
+      <a href="analytics.html" class="bn-item active"><span class="bn-icon">📊</span>Stats</a>
+      <a href="maintenance.html" class="bn-item"><span class="bn-icon">🔧</span>Service</a>
+    </div>
+  </nav>
+
+  <script>
+    const { createClient } = supabase
+    const db = createClient('https://mjmuqhridetyqrytouhe.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qbXVxaHJpZGV0eXFyeXRvdWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTYxNDQsImV4cCI6MjA5MDU5MjE0NH0.QURk9RdMTpXGcVwjcVGG9XQ5xKktPlYa3L9PBmyoYpw')
+
+    const CHART_DEFAULTS = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Space Grotesk', size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          border: { color: 'rgba(255,255,255,0.08)' }
+        },
+        y: {
+          ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Space Grotesk', size: 11 }, stepSize: 1 },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          border: { color: 'rgba(255,255,255,0.08)' },
+          beginAtZero: true
+        }
+      }
+    }
+
+    let makeChart, timeChart
+
+    async function loadAnalytics() {
+      const [carsRes, rallyRes] = await Promise.all([
+        db.from('cars').select('*'),
+        db.from('rally_participants').select('id', { count: 'exact', head: true }).eq('is_active', true)
+      ])
+
+      const cars = carsRes.data || []
+      document.getElementById('stat-total').textContent = cars.length
+      document.getElementById('stat-rally').textContent = rallyRes.count ?? 0
+
+      // Cars by make
+      const makeCounts = {}
+      cars.forEach(c => {
+        const m = c.make || 'Unknown'
+        makeCounts[m] = (makeCounts[m] || 0) + 1
+      })
+      const makeLabels = Object.keys(makeCounts)
+      const makeData = Object.values(makeCounts)
+
+      if (makeChart) makeChart.destroy()
+      makeChart = new Chart(document.getElementById('make-chart'), {
+        type: 'bar',
+        data: {
+          labels: makeLabels,
+          datasets: [{
+            data: makeData,
+            backgroundColor: 'rgba(0,200,255,0.6)',
+            borderColor: '#00C8FF',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: { ...CHART_DEFAULTS }
+      })
+
+      // Registrations over time (group by day)
+      const dayCounts = {}
+      cars.forEach(c => {
+        if (!c.created_at) return
+        const day = c.created_at.substring(0, 10)
+        dayCounts[day] = (dayCounts[day] || 0) + 1
+      })
+      const sortedDays = Object.keys(dayCounts).sort()
+      const dayData = sortedDays.map(d => dayCounts[d])
+
+      if (timeChart) timeChart.destroy()
+      timeChart = new Chart(document.getElementById('time-chart'), {
+        type: 'line',
+        data: {
+          labels: sortedDays,
+          datasets: [{
+            data: dayData,
+            borderColor: '#00C8FF',
+            backgroundColor: 'rgba(0,200,255,0.08)',
+            borderWidth: 2,
+            pointBackgroundColor: '#00C8FF',
+            pointRadius: 4,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: { ...CHART_DEFAULTS }
+      })
+    }
+
+    loadAnalytics()
+  </script>
+</body>
+</html>

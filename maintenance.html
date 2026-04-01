@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Garage — Maintenance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #09090B;
+      --cyan: #00C8FF;
+      --green: #00FF88;
+      --red: #FF4444;
+      --amber: #FFB800;
+      --sidebar-w: 180px;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(0,200,255,0.15);
+    }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: #fff;
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #0A0A0F;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      padding: 0 18px 28px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.8); }
+    .nav-link.active {
+      color: #fff;
+      border-left-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .rally-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 36px 32px;
+    }
+    .top-bar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+    .page-title {
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+    .page-title .solid { color: #fff; }
+    .page-title .outline {
+      -webkit-text-stroke: 1px #fff;
+      color: transparent;
+    }
+    .add-btn {
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      margin-top: 8px;
+    }
+
+    /* TABLE */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead tr {
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    td {
+      padding: 13px 16px;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .status-badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .s-scheduled { background: rgba(255,184,0,0.15); color: var(--amber); }
+    .s-in_progress { background: rgba(0,200,255,0.12); color: var(--cyan); }
+    .s-complete { background: rgba(0,255,136,0.12); color: var(--green); }
+    .s-alert { background: rgba(255,68,68,0.15); color: var(--red); }
+
+    .empty-state {
+      padding: 60px;
+      text-align: center;
+      color: rgba(255,255,255,0.25);
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #13131A;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 440px;
+      margin: 16px;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+    .modal-close {
+      position: absolute;
+      top: 16px; right: 20px;
+      background: none; border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 20px; cursor: pointer;
+    }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      outline: none;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--cyan); }
+    .field select option { background: #13131A; }
+    .field textarea { resize: vertical; min-height: 70px; }
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .modal-error { color: var(--red); font-size: 12px; margin-top: 10px; text-align: center; }
+
+    /* MOBILE */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #0A0A0F;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 0 14px;
+      z-index: 200;
+    }
+    .bottom-nav-inner { display: flex; justify-content: space-around; }
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .bn-item.active { color: var(--cyan); }
+    .bn-icon { font-size: 20px; line-height: 1; }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px 12px 90px; }
+      .page-title { font-size: 30px; }
+      table { font-size: 11px; }
+      th, td { padding: 10px 10px; }
+      .bottom-nav { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">The Garage</div>
+    <a href="index.html" class="nav-link">🏠 Dashboard</a>
+    <a href="collection.html" class="nav-link">🚗 Collection</a>
+    <a href="rally.html" class="nav-link">
+      <span class="rally-dot"></span> Rally
+    </a>
+    <a href="analytics.html" class="nav-link">📊 Analytics</a>
+    <a href="maintenance.html" class="nav-link active">🔧 Maintenance</a>
+    <a href="vault.html" class="nav-link">🔒 Vault</a>
+  </nav>
+
+  <main class="main">
+    <div class="top-bar">
+      <h1 class="page-title">
+        <span class="solid">MAINTENANCE </span><span class="outline">SERVICE LOG</span>
+      </h1>
+      <button class="add-btn" onclick="openModal()">+ LOG SERVICE</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Car</th>
+            <th>Owner</th>
+            <th>Service</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody id="log-body">
+          <tr><td colspan="6"><div class="empty-state">Loading...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ADD SERVICE MODAL -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title">LOG SERVICE</div>
+      <div class="field">
+        <label>Select Car</label>
+        <select id="f-car">
+          <option value="">Loading cars...</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Your Name</label>
+        <input type="text" id="f-owner" placeholder="John Smith">
+      </div>
+      <div class="field">
+        <label>Service Title</label>
+        <input type="text" id="f-title" placeholder="Oil Change">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="f-desc" placeholder="Details..."></textarea>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="scheduled">Scheduled</option>
+          <option value="in_progress">In Progress</option>
+          <option value="complete">Complete</option>
+          <option value="alert">Alert</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label>Cost ($)</label>
+        <input type="number" id="f-cost" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <button class="submit-btn" onclick="addLog()">SAVE SERVICE LOG</button>
+      <div class="modal-error" id="modal-error"></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a href="index.html" class="bn-item"><span class="bn-icon">🏠</span>Home</a>
+      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span>Cars</a>
+      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span>Rally</a>
+      <a href="analytics.html" class="bn-item"><span class="bn-icon">📊</span>Stats</a>
+      <a href="maintenance.html" class="bn-item active"><span class="bn-icon">🔧</span>Service</a>
+    </div>
+  </nav>
+
+  <script>
+    const { createClient } = supabase
+    const db = createClient('https://mjmuqhridetyqrytouhe.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qbXVxaHJpZGV0eXFyeXRvdWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTYxNDQsImV4cCI6MjA5MDU5MjE0NH0.QURk9RdMTpXGcVwjcVGG9XQ5xKktPlYa3L9PBmyoYpw')
+
+    function esc(str) {
+      return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+
+    function statusClass(s) {
+      const map = { scheduled:'s-scheduled', in_progress:'s-in_progress', complete:'s-complete', alert:'s-alert' }
+      return map[s] || 's-scheduled'
+    }
+    function statusLabel(s) {
+      const map = { scheduled:'Scheduled', in_progress:'In Progress', complete:'Complete', alert:'Alert' }
+      return map[s] || s
+    }
+    function formatCost(v) {
+      if (v == null || v === '') return '—'
+      return '$' + parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    }
+    function formatDate(s) {
+      if (!s) return '—'
+      return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+
+    let cars = []
+
+    async function loadCars() {
+      const { data } = await db.from('cars').select('id, owner_name, make, model, year').order('created_at', { ascending: false })
+      cars = data || []
+      const sel = document.getElementById('f-car')
+      if (cars.length === 0) {
+        sel.innerHTML = '<option value="">No cars yet</option>'
+      } else {
+        sel.innerHTML = '<option value="">Select a car...</option>' + cars.map(c =>
+          `<option value="${esc(c.id)}">${esc(c.year || '')} ${esc(c.make)} ${esc(c.model)} — ${esc(c.owner_name)}</option>`
+        ).join('')
+      }
+    }
+
+    async function loadLogs() {
+      const { data } = await db
+        .from('maintenance_logs')
+        .select('*, cars(make, model)')
+        .order('created_at', { ascending: false })
+
+      const tbody = document.getElementById('log-body')
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">NO SERVICE LOGS YET.</div></td></tr>'
+        return
+      }
+      tbody.innerHTML = data.map(l => {
+        const car = l.cars ? `${esc(l.cars.make)} ${esc(l.cars.model)}` : '—'
+        return `
+          <tr>
+            <td>${car}</td>
+            <td>${esc(l.owner_name || '—')}</td>
+            <td><div style="font-weight:600">${esc(l.title)}</div></td>
+            <td><span class="status-badge ${statusClass(l.status)}">${statusLabel(l.status)}</span></td>
+            <td>${formatDate(l.date)}</td>
+            <td style="color:var(--cyan);font-weight:600">${formatCost(l.cost)}</td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    loadCars()
+    loadLogs()
+
+    function openModal() {
+      document.getElementById('modal').classList.add('open')
+      document.getElementById('modal-error').textContent = ''
+      // Default date to today
+      document.getElementById('f-date').value = new Date().toISOString().substring(0, 10)
+    }
+    function closeModal() {
+      document.getElementById('modal').classList.remove('open')
+    }
+    document.getElementById('modal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeModal()
+    })
+
+    async function addLog() {
+      const carId = document.getElementById('f-car').value
+      const owner = document.getElementById('f-owner').value.trim()
+      const title = document.getElementById('f-title').value.trim()
+      const desc = document.getElementById('f-desc').value.trim()
+      const status = document.getElementById('f-status').value
+      const date = document.getElementById('f-date').value
+      const cost = document.getElementById('f-cost').value
+      const errEl = document.getElementById('modal-error')
+      errEl.textContent = ''
+
+      if (!carId || !title || !status) {
+        errEl.textContent = 'Car, service title, and status are required.'
+        return
+      }
+
+      const { error } = await db.from('maintenance_logs').insert({
+        car_id: carId,
+        owner_name: owner || null,
+        title,
+        description: desc || null,
+        status,
+        date: date || null,
+        cost: cost ? parseFloat(cost) : null
+      })
+
+      if (error) { errEl.textContent = 'Error: ' + error.message; return }
+      closeModal()
+      loadLogs()
+    }
+  </script>
+</body>
+</html>
