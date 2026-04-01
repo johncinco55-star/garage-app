@@ -841,6 +841,84 @@
     .sr-delete { color: var(--red); border-color: rgba(255,68,68,0.2); }
     .sr-delete:hover { background: rgba(255,68,68,0.15); }
 
+    /* ───── NAVIGATION MODE ───── */
+    .nav-bar {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      background: rgba(10,10,15,0.92); border: 1px solid rgba(0,200,255,0.25);
+      border-radius: 14px; padding: 14px 20px; z-index: 95;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      display: none; flex-direction: column; align-items: center; gap: 6px;
+      min-width: 280px; max-width: 90vw;
+    }
+    .nav-bar.visible { display: flex; }
+    .nav-instruction { font-size: 18px; font-weight: 700; color: #fff; text-align: center; }
+    .nav-distance { font-size: 12px; color: var(--cyan); font-weight: 600; }
+    .nav-eta { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .nav-stop-btn {
+      margin-top: 4px; padding: 6px 16px; border-radius: 8px;
+      background: rgba(255,68,68,0.2); border: 1px solid rgba(255,68,68,0.4);
+      color: var(--red); font-size: 11px; font-weight: 600; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .start-nav-btn {
+      width: 100%; padding: 12px; margin-top: 8px; border-radius: 10px;
+      background: rgba(0,200,255,0.15); border: 1px solid rgba(0,200,255,0.3);
+      color: var(--cyan); font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif; display: none;
+    }
+    .start-nav-btn.visible { display: block; }
+    .start-nav-btn:hover { background: rgba(0,200,255,0.25); }
+
+    /* ───── LIVE STANDINGS ───── */
+    .standings-panel {
+      display: none; flex-direction: column;
+      padding: 0; overflow: hidden;
+    }
+    .standings-panel.visible { display: flex; }
+    .standings-header {
+      padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+    }
+    .standings-list { flex: 1; overflow-y: auto; padding: 8px 12px; }
+    .standing-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 8px; border-radius: 8px; margin-bottom: 4px;
+      background: rgba(255,255,255,0.02);
+      transition: all 0.5s ease;
+    }
+    .standing-row.p1 { background: rgba(0,200,255,0.08); border: 1px solid rgba(0,200,255,0.2); }
+    .standing-pos {
+      font-size: 16px; font-weight: 800; min-width: 32px; text-align: center;
+      color: rgba(255,255,255,0.6);
+    }
+    .standing-row.p1 .standing-pos { color: var(--cyan); }
+    .standing-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .standing-info { flex: 1; min-width: 0; }
+    .standing-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .standing-car { font-size: 10px; color: rgba(255,255,255,0.4); }
+    .standing-speed { font-size: 14px; font-weight: 700; color: var(--cyan); min-width: 50px; text-align: right; }
+    .standing-gap { font-size: 9px; color: rgba(255,255,255,0.35); text-align: right; min-width: 60px; }
+    .standing-gap.leader { color: var(--green); font-weight: 600; }
+
+    /* Mobile standings strip */
+    .standings-strip {
+      display: none; position: absolute; bottom: 60px; left: 0; right: 0;
+      background: rgba(10,10,15,0.9); border-top: 1px solid rgba(0,200,255,0.15);
+      padding: 8px 12px; z-index: 85; overflow-x: auto; white-space: nowrap;
+      backdrop-filter: blur(10px);
+    }
+    .standings-strip.visible { display: flex; gap: 12px; }
+    .strip-item { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; min-width: 50px; }
+    .strip-pos { font-size: 11px; font-weight: 800; }
+    .strip-pos.p1 { color: var(--cyan); }
+    .strip-name { font-size: 9px; color: rgba(255,255,255,0.6); }
+    .strip-speed { font-size: 10px; font-weight: 700; color: var(--cyan); }
+
+    @media (max-width: 768px) {
+      .standings-panel { display: none !important; }
+      .nav-bar { top: 10px; min-width: unset; width: 90vw; }
+    }
+
     /* ───── HAZARD BAR ───── */
     .hazard-bar {
       position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -945,7 +1023,19 @@
         <button class="planner-btn danger" id="clear-route-btn">CLEAR</button>
         <div id="route-badge" class="route-badge" style="display:none"></div>
       </div>
+      <button class="start-nav-btn" id="start-nav-btn" onclick="startNavigation()">🚗 START NAVIGATION</button>
     </div>
+
+    <!-- Navigation Bar (on map, shown during nav mode) -->
+    <div class="nav-bar" id="nav-bar">
+      <div class="nav-instruction" id="nav-instruction">Follow the route</div>
+      <div class="nav-distance" id="nav-dist">Calculating...</div>
+      <div class="nav-eta" id="nav-eta"></div>
+      <button class="nav-stop-btn" onclick="stopNavigation()">STOP NAVIGATION</button>
+    </div>
+
+    <!-- Mobile standings strip -->
+    <div class="standings-strip" id="standings-strip"></div>
 
     <!-- HAZARD BAR (visible after joining) -->
     <div class="hazard-bar" id="hazard-bar">
@@ -1004,6 +1094,12 @@
       <div id="saved-routes-section" class="saved-routes">
         <div class="saved-routes-title">Saved Routes</div>
         <div id="saved-routes-list"></div>
+      </div>
+
+      <!-- Live Standings (shown during nav mode, replaces photo grid) -->
+      <div class="standings-panel" id="standings-panel">
+        <div class="standings-header">🏁 LIVE STANDINGS</div>
+        <div class="standings-list" id="standings-list"></div>
       </div>
 
       <!-- Chat -->
@@ -1485,6 +1581,18 @@ async function saveRoute() {
 document.getElementById('get-route-btn').addEventListener('click', getRoute);
 document.getElementById('save-route-btn').addEventListener('click', saveRoute);
 document.getElementById('clear-route-btn').addEventListener('click', clearRoute);
+
+// After route is drawn, show Start Navigation button
+const _getRouteBtn = document.getElementById('get-route-btn');
+if (_getRouteBtn) {
+  const _origListener = _getRouteBtn.onclick;
+  _getRouteBtn.addEventListener('click', () => {
+    // Wait for route to render then show nav button
+    setTimeout(() => {
+      if (currentRoute) showStartNavBtn();
+    }, 1500);
+  });
+}
 
 /* ═══════════════════════════════════════════════
    SAVED ROUTES LIST (leader only)
@@ -2351,6 +2459,211 @@ map.on('load', async () => {
   const restored = await restoreSession();
   if (!state.joined) await preloadFromUrl();
 });
+
+// ══════════════════════════════════════
+// TURN-BY-TURN NAVIGATION
+// ══════════════════════════════════════
+let navMode = false;
+let navRouteCoords = null; // full route coordinates for nav
+let navWatchId = null;
+
+function startNavigation() {
+  if (!currentRoute || !currentRoute.geometry) { showToast('Get a route first', 'error'); return; }
+  navMode = true;
+  navRouteCoords = currentRoute.geometry.coordinates;
+
+  // Show nav bar, hide route planner
+  document.getElementById('nav-bar').classList.add('visible');
+  document.getElementById('start-nav-btn').classList.remove('visible');
+  document.getElementById('route-planner') && (document.getElementById('route-planner').style.display = 'none');
+
+  // Show standings, hide photo grid
+  document.getElementById('standings-panel').classList.add('visible');
+  const photoGrid = document.getElementById('photo-grid-section');
+  if (photoGrid) photoGrid.style.display = 'none';
+  // Mobile strip
+  if (window.innerWidth <= 768) document.getElementById('standings-strip').classList.add('visible');
+
+  // Tilt map to 3D
+  map.easeTo({ pitch: 45, duration: 1000 });
+
+  // Update nav info
+  updateNavInfo();
+
+  // Start continuous GPS watch for navigation
+  if (navigator.geolocation) {
+    navWatchId = navigator.geolocation.watchPosition((pos) => {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      // Re-center map on user and rotate to heading
+      if (state.lastLat && state.lastLng) {
+        const hdg = bearing(state.lastLat, state.lastLng, lat, lng);
+        map.easeTo({ center: [lng, lat], bearing: hdg, duration: 1000 });
+      } else {
+        map.easeTo({ center: [lng, lat], duration: 1000 });
+      }
+      updateNavInfo(lat, lng);
+      updateStandings();
+    }, () => {}, { enableHighAccuracy: true });
+  }
+
+  showToast('Navigation started', 'success');
+}
+
+function stopNavigation() {
+  navMode = false;
+  navRouteCoords = null;
+
+  // Hide nav bar, show route planner for leader
+  document.getElementById('nav-bar').classList.remove('visible');
+  if (state.myRole === 'leader') {
+    const rp = document.getElementById('route-planner');
+    if (rp) rp.style.display = '';
+  }
+
+  // Hide standings, show photo grid
+  document.getElementById('standings-panel').classList.remove('visible');
+  document.getElementById('standings-strip').classList.remove('visible');
+  const photoGrid = document.getElementById('photo-grid-section');
+  if (photoGrid) photoGrid.style.display = '';
+
+  // Reset map view
+  map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+
+  // Stop GPS watch
+  if (navWatchId !== null) {
+    navigator.geolocation.clearWatch(navWatchId);
+    navWatchId = null;
+  }
+
+  showToast('Navigation stopped', 'success');
+}
+
+function updateNavInfo(lat, lng) {
+  if (!navRouteCoords || !navRouteCoords.length) return;
+  const dest = navRouteCoords[navRouteCoords.length - 1];
+
+  if (lat && lng) {
+    const distMiles = haversine(lat, lng, dest[1], dest[0]);
+    const distText = distMiles < 0.1 ? `${Math.round(distMiles * 5280)} ft` : `${distMiles.toFixed(1)} mi`;
+    document.getElementById('nav-dist').textContent = `${distText} remaining`;
+
+    // ETA based on current speed or 30mph default
+    const speedMph = (state.lastLat && state.lastLng && state.lastTime)
+      ? Math.max(haversine(state.lastLat, state.lastLng, lat, lng) / ((Date.now() - state.lastTime) / 3600000), 5)
+      : 30;
+    const etaMins = Math.round((distMiles / speedMph) * 60);
+    document.getElementById('nav-eta').textContent = etaMins > 60
+      ? `ETA: ${Math.floor(etaMins/60)}h ${etaMins%60}m`
+      : `ETA: ${etaMins} min`;
+
+    // Simple instruction based on proximity to next waypoint
+    if (distMiles < 0.05) {
+      document.getElementById('nav-instruction').textContent = '🏁 You have arrived!';
+    } else if (distMiles < 0.2) {
+      document.getElementById('nav-instruction').textContent = '📍 Destination ahead';
+    } else {
+      document.getElementById('nav-instruction').textContent = 'Follow the route';
+    }
+  } else {
+    const totalDist = currentRoute ? (currentRoute.distance / 1609.34).toFixed(1) : '?';
+    const totalMin = currentRoute ? Math.round(currentRoute.duration / 60) : '?';
+    document.getElementById('nav-dist').textContent = `${totalDist} mi total`;
+    document.getElementById('nav-eta').textContent = `~${totalMin} min drive`;
+  }
+}
+
+// Show START NAVIGATION button after route is drawn
+function showStartNavBtn() {
+  document.getElementById('start-nav-btn').classList.add('visible');
+}
+
+// Hook: call showStartNavBtn after getRoute succeeds
+const _origGetRoute = typeof getRoute === 'function' ? getRoute : null;
+// We'll patch this in the event listener section below
+
+// ══════════════════════════════════════
+// MOTOGP LIVE STANDINGS
+// ══════════════════════════════════════
+function updateStandings() {
+  if (!navMode || !allParticipants || !allParticipants.length) return;
+  if (!navRouteCoords || !navRouteCoords.length) return;
+
+  const startCoord = navRouteCoords[0]; // [lng, lat]
+
+  // Calculate distance from start for each active participant
+  const ranked = allParticipants
+    .filter(p => p.is_active && p.lat && p.lng)
+    .map(p => ({
+      ...p,
+      distFromStart: haversine(startCoord[1], startCoord[0], p.lat, p.lng)
+    }))
+    .sort((a, b) => b.distFromStart - a.distFromStart); // furthest ahead = P1
+
+  const leaderDist = ranked.length > 0 ? ranked[0].distFromStart : 0;
+
+  // Desktop standings panel
+  const listEl = document.getElementById('standings-list');
+  if (listEl) {
+    listEl.innerHTML = ranked.map((p, i) => {
+      const pos = i + 1;
+      const speed = Math.round(p.speed || 0);
+      const gap = pos === 1 ? '' : calcGap(leaderDist - p.distFromStart, p.speed);
+      const isP1 = pos === 1;
+      const colorHex = p.color || '#3388FF';
+      return `<div class="standing-row ${isP1 ? 'p1' : ''}">
+        <div class="standing-pos">${isP1 ? '👑' : ''}P${pos}</div>
+        <div class="standing-dot" style="background:${esc(colorHex)}"></div>
+        <div class="standing-info">
+          <div class="standing-name">${esc(p.owner_name || 'Driver')}</div>
+          <div class="standing-car">${esc(p.make || '')} ${esc(p.model || '')}</div>
+        </div>
+        <div class="standing-speed">${speed}<span style="font-size:9px;color:rgba(255,255,255,0.4)"> mph</span></div>
+        <div class="standing-gap ${isP1 ? 'leader' : ''}">${isP1 ? 'LEADER' : gap}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Mobile strip
+  const stripEl = document.getElementById('standings-strip');
+  if (stripEl && window.innerWidth <= 768) {
+    stripEl.innerHTML = ranked.map((p, i) => {
+      const pos = i + 1;
+      const speed = Math.round(p.speed || 0);
+      return `<div class="strip-item">
+        <div class="strip-pos ${pos === 1 ? 'p1' : ''}">${pos === 1 ? '👑' : ''}P${pos}</div>
+        <div class="strip-name">${esc((p.owner_name || 'Driver').split(' ')[0])}</div>
+        <div class="strip-speed">${speed} mph</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function calcGap(distMiles, speed) {
+  if (!distMiles || distMiles <= 0) return '—';
+  const speedMph = Math.max(speed || 1, 1);
+  const gapSecs = (distMiles / speedMph) * 3600;
+
+  const distText = distMiles < 0.1
+    ? `${Math.round(distMiles * 5280)} ft`
+    : `${distMiles.toFixed(2)} mi`;
+
+  const timeText = gapSecs < 60
+    ? `+${Math.round(gapSecs)}s`
+    : `+${(gapSecs / 60).toFixed(1)}m`;
+
+  return `${distText} ${timeText}`;
+}
+
+// Update standings whenever participant data changes
+// Hook into existing realtime participant handler
+const _origAllParticipantsUpdate = typeof renderPhotoGrid === 'function' ? renderPhotoGrid : null;
+if (_origAllParticipantsUpdate) {
+  const _origRender = renderPhotoGrid;
+  renderPhotoGrid = function() {
+    _origRender.apply(this, arguments);
+    if (navMode) updateStandings();
+  };
+}
 
 // ══════════════════════════════════════
 // HAZARD REPORTING
