@@ -846,26 +846,54 @@
     .sr-delete { color: var(--red); border-color: rgba(255,68,68,0.2); }
     .sr-delete:hover { background: rgba(255,68,68,0.15); }
 
-    /* ───── NAVIGATION MODE ───── */
-    .nav-bar {
-      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px; padding: 14px 20px; z-index: 100;
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      display: none; flex-direction: column; align-items: center; gap: 6px;
-      min-width: 300px; max-width: 90vw;
+    /* ───── APPLE MAPS NAVIGATION ───── */
+    /* Top pill — single line: arrow + distance + street */
+    .nav-pill {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-radius: 14px; padding: 10px 20px; z-index: 300;
+      display: none; align-items: center; gap: 12px; max-width: 85%; white-space: nowrap;
     }
-    .nav-bar.visible { display: flex; }
-    .nav-instruction { font-size: 18px; font-weight: 700; color: #fff; text-align: center; }
-    .nav-distance { font-size: 12px; color: var(--cyan); font-weight: 600; }
-    .nav-eta { font-size: 11px; color: rgba(255,255,255,0.5); }
-    .nav-stop-btn {
-      margin-top: 4px; padding: 8px 20px; border-radius: 10px;
-      background: rgba(255,68,68,0.6); border: 1px solid rgba(255,100,100,0.3);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;
-      font-family: 'Space Grotesk', sans-serif;
+    .nav-pill.visible { display: flex; }
+    .nav-pill-arrow { font-size: 22px; font-weight: 800; color: #fff; }
+    .nav-pill-dist { font-size: 16px; font-weight: 700; color: #fff; }
+    .nav-pill-street { font-size: 14px; color: rgba(255,255,255,0.6); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Speed badge — top right, clean square */
+    .speed-badge {
+      position: absolute; top: 12px; right: 12px; z-index: 300;
+      width: 52px; height: 52px; border-radius: 10px;
+      background: #fff; display: none; flex-direction: column;
+      align-items: center; justify-content: center;
     }
+    .speed-badge.visible { display: flex; }
+    .speed-num { font-size: 22px; font-weight: 800; color: #000; line-height: 1; }
+    .speed-unit { font-size: 8px; font-weight: 600; color: #666; text-transform: uppercase; }
+
+    /* Bottom bar — slim arrival info */
+    .nav-bottom {
+      position: absolute; bottom: 80px; left: 12px; right: 12px;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px; padding: 14px 20px; z-index: 300;
+      display: none; align-items: center; justify-content: space-between;
+      height: 56px; font-size: 14px; color: #fff;
+    }
+    .nav-bottom.visible { display: flex; }
+    .nav-bottom-left { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+    .nav-bottom-right { color: rgba(255,255,255,0.6); font-weight: 500; }
+
+    /* Stop button — tiny pill top-left */
+    .nav-stop-x {
+      position: absolute; top: 12px; left: 12px; z-index: 301;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+      border: none; color: #fff; font-size: 16px; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      font-family: 'Space Grotesk'; font-weight: 700;
+    }
+    .nav-stop-x.visible { display: flex; }
+
+    /* Start navigation button — all participants */
     .start-nav-btn {
       width: 100%; padding: 12px; margin-top: 8px; border-radius: 10px;
       background: rgba(0,200,255,0.15); border: 1px solid rgba(0,200,255,0.3);
@@ -875,31 +903,36 @@
     .start-nav-btn.visible { display: block; }
     .start-nav-btn:hover { background: rgba(0,200,255,0.25); }
 
-    /* ───── LIVE STANDINGS ───── */
+    /* MotoGP strip — slim horizontal during nav */
+    .standings-strip {
+      position: absolute; bottom: 140px; left: 0; right: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      padding: 8px 12px; z-index: 200; overflow-x: auto; white-space: nowrap;
+      display: none; gap: 12px; height: 60px; align-items: center;
+      -webkit-overflow-scrolling: touch;
+    }
+    .standings-strip.visible { display: flex; }
+    .standings-strip::-webkit-scrollbar { display: none; }
+    .strip-item { display: inline-flex; align-items: center; gap: 6px; min-width: 80px; flex-shrink: 0; }
+    .strip-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.2); }
+    .strip-initial { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
+    .strip-info { display: flex; flex-direction: column; }
+    .strip-pos { font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.5); }
+    .strip-pos.p1 { color: var(--cyan); }
+    .strip-name { font-size: 10px; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50px; }
+    .strip-speed { font-size: 10px; font-weight: 700; color: var(--cyan); }
+
+    /* Desktop standings panel — right side during nav */
     .standings-panel {
-      display: none; flex-direction: column;
-      padding: 0; overflow: hidden;
-      background: rgba(0,0,0,0.5);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border-left: 1px solid rgba(0,200,255,0.15);
+      display: none; flex-direction: column; padding: 0; overflow: hidden;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     }
     .standings-panel.visible { display: flex; }
-    .standings-header {
-      padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
-      font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;
-    }
+    .standings-header { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; font-weight: 700; }
     .standings-list { flex: 1; overflow-y: auto; padding: 8px 12px; }
-    .standing-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 8px; border-radius: 8px; margin-bottom: 4px;
-      background: rgba(255,255,255,0.02);
-      transition: all 0.5s ease;
-    }
+    .standing-row { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 8px; margin-bottom: 4px; background: rgba(255,255,255,0.02); transition: all 0.5s ease; }
     .standing-row.p1 { background: rgba(0,200,255,0.08); border: 1px solid rgba(0,200,255,0.2); }
-    .standing-pos {
-      font-size: 16px; font-weight: 800; min-width: 32px; text-align: center;
-      color: rgba(255,255,255,0.6);
-    }
+    .standing-pos { font-size: 16px; font-weight: 800; min-width: 32px; text-align: center; color: rgba(255,255,255,0.6); }
     .standing-row.p1 .standing-pos { color: var(--cyan); }
     .standing-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .standing-info { flex: 1; min-width: 0; }
@@ -909,23 +942,18 @@
     .standing-gap { font-size: 9px; color: rgba(255,255,255,0.35); text-align: right; min-width: 60px; }
     .standing-gap.leader { color: var(--green); font-weight: 600; }
 
-    /* Mobile standings strip */
-    .standings-strip {
-      display: none; position: absolute; bottom: 60px; left: 0; right: 0;
-      background: rgba(10,10,15,0.9); border-top: 1px solid rgba(0,200,255,0.15);
-      padding: 8px 12px; z-index: 85; overflow-x: auto; white-space: nowrap;
-      backdrop-filter: blur(10px);
-    }
-    .standings-strip.visible { display: flex; gap: 12px; }
-    .strip-item { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; min-width: 50px; }
-    .strip-pos { font-size: 11px; font-weight: 800; }
-    .strip-pos.p1 { color: var(--cyan); }
-    .strip-name { font-size: 9px; color: rgba(255,255,255,0.6); }
-    .strip-speed { font-size: 10px; font-weight: 700; color: var(--cyan); }
+    /* Navigation mode — full screen map */
+    body.nav-mode .right-panel { display: none !important; }
+    body.nav-mode .map-wrap { flex: 0 0 100% !important; height: 100vh !important; }
+    body.nav-mode #route-planner { display: none !important; }
+    body.nav-mode .hazard-bar { display: none !important; }
 
     @media (max-width: 768px) {
       .standings-panel { display: none !important; }
-      .nav-bar { top: 10px; min-width: unset; width: 90vw; }
+      body.nav-mode .map-wrap { height: 100dvh !important; }
+      body.nav-mode .bottom-nav { display: none !important; }
+      .nav-bottom { bottom: 12px; }
+      .standings-strip { bottom: 72px; }
     }
 
     /* ───── HAZARD BAR ───── */
@@ -995,9 +1023,9 @@
         overflow: hidden;
       }
 
-      /* Participants: horizontal scroll row, fixed 100px */
+      /* Participants: horizontal scroll row, fixed 90px */
       .photo-grid-section {
-        flex: 0 0 100px !important; max-height: 100px;
+        flex: 0 0 90px !important; max-height: 90px;
         overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.06);
       }
       .photo-grid {
@@ -1005,6 +1033,7 @@
         overflow-x: auto !important; overflow-y: hidden !important;
         gap: 8px; padding: 6px 12px;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; -ms-overflow-style: none;
       }
       .photo-card {
         flex: 0 0 70px !important; width: 70px !important;
@@ -1023,11 +1052,11 @@
 
       /* Saved routes: collapsed 40px, expandable */
       .saved-routes {
-        flex: 0 0 auto !important; max-height: 40px;
+        flex: 0 0 auto !important; max-height: 36px;
         overflow: hidden; transition: max-height 0.3s ease;
         padding: 10px 16px !important;
       }
-      .saved-routes.expanded { max-height: 300px; overflow-y: auto; }
+      .saved-routes.expanded { max-height: 120px; overflow-y: auto; }
       .saved-routes-title {
         cursor: pointer; display: flex; align-items: center;
         justify-content: space-between;
@@ -1042,7 +1071,7 @@
 
       /* Chat: fills remaining space */
       .chat-section {
-        flex: 1 1 0 !important; min-height: 150px !important;
+        flex: 1 1 0 !important; min-height: 120px !important;
         display: flex !important; flex-direction: column !important;
         overflow: hidden !important;
       }
@@ -1106,15 +1135,29 @@
       <button class="start-nav-btn" id="start-nav-btn" onclick="startNavigation()">🚗 START NAVIGATION</button>
     </div>
 
-    <!-- Navigation Bar (on map, shown during nav mode) -->
-    <div class="nav-bar" id="nav-bar">
-      <div class="nav-instruction" id="nav-instruction">Follow the route</div>
-      <div class="nav-distance" id="nav-dist">Calculating...</div>
-      <div class="nav-eta" id="nav-eta"></div>
-      <button class="nav-stop-btn" onclick="stopNavigation()">STOP NAVIGATION</button>
+    <!-- Apple Maps Nav: Top Pill -->
+    <div class="nav-pill" id="nav-pill">
+      <span class="nav-pill-arrow" id="nav-arrow">↑</span>
+      <span class="nav-pill-dist" id="nav-dist">0.3 mi</span>
+      <span class="nav-pill-street" id="nav-street"></span>
     </div>
 
-    <!-- Mobile standings strip -->
+    <!-- Apple Maps Nav: Speed Badge -->
+    <div class="speed-badge" id="speed-badge">
+      <span class="speed-num" id="speed-num">0</span>
+      <span class="speed-unit">mph</span>
+    </div>
+
+    <!-- Apple Maps Nav: Bottom Bar -->
+    <div class="nav-bottom" id="nav-bottom">
+      <div class="nav-bottom-left"><span>🕐</span> <span id="nav-arrival">--:--</span></div>
+      <div class="nav-bottom-right" id="nav-remaining">-- mi left</div>
+    </div>
+
+    <!-- Apple Maps Nav: Stop Button -->
+    <button class="nav-stop-x" id="nav-stop-x" onclick="stopNavigation()">✕</button>
+
+    <!-- MotoGP Strip -->
     <div class="standings-strip" id="standings-strip"></div>
 
     <!-- HAZARD BAR (visible after joining) -->
@@ -1168,6 +1211,8 @@
       <div id="photo-grid-section" class="photo-grid-section" style="display:none">
         <div class="section-label">Participants</div>
         <div id="photo-grid" class="photo-grid"></div>
+        <!-- Navigate button — visible to ALL participants when route exists -->
+        <button class="start-nav-btn" id="panel-nav-btn" onclick="startNavigation()" style="margin:8px 12px">🚗 START NAVIGATION</button>
       </div>
 
       <!-- Saved Routes (leader only) -->
@@ -2581,113 +2626,116 @@ let navSteps = []; // turn-by-turn steps from Mapbox Directions
 
 function startNavigation() {
   if (!currentRoute || !currentRoute.geometry) { showToast('Get a route first', 'error'); return; }
-  navMode = true;
+  state.navMode = true;
   navRouteCoords = currentRoute.geometry.coordinates;
 
-  // Show nav bar, hide route planner
-  document.getElementById('nav-bar').classList.add('visible');
+  // Full-screen map mode
+  document.body.classList.add('nav-mode');
+
+  // Show Apple Maps overlays
+  document.getElementById('nav-pill').classList.add('visible');
+  document.getElementById('speed-badge').classList.add('visible');
+  document.getElementById('nav-bottom').classList.add('visible');
+  document.getElementById('nav-stop-x').classList.add('visible');
+  document.getElementById('standings-strip').classList.add('visible');
+
+  // Hide buttons
   document.getElementById('start-nav-btn').classList.remove('visible');
-  document.getElementById('route-planner') && (document.getElementById('route-planner').style.display = 'none');
+  const panelBtn = document.getElementById('panel-nav-btn');
+  if (panelBtn) panelBtn.classList.remove('visible');
 
-  // Show standings, hide photo grid
-  document.getElementById('standings-panel').classList.add('visible');
-  const photoGrid = document.getElementById('photo-grid-section');
-  if (photoGrid) photoGrid.style.display = 'none';
-  // Mobile strip
-  if (window.innerWidth <= 768) document.getElementById('standings-strip').classList.add('visible');
-
-  // Zoom in to street level + 3D tilt
+  // Zoom to street level + 3D
   const userLat = state.lastLat || navRouteCoords[0][1];
   const userLng = state.lastLng || navRouteCoords[0][0];
-  const userHeading = (state.lastLat && state.lastLng && navRouteCoords.length > 1)
-    ? bearing(state.lastLat, state.lastLng, navRouteCoords[1][1], navRouteCoords[1][0])
-    : 0;
-  map.flyTo({
-    center: [userLng, userLat],
-    zoom: 15,
-    pitch: 45,
-    bearing: userHeading,
-    duration: 1500
-  });
+  const hdg = (state.lastLat && state.lastLng && navRouteCoords.length > 1)
+    ? bearing(state.lastLat, state.lastLng, navRouteCoords[1][1], navRouteCoords[1][0]) : 0;
+  map.flyTo({ center: [userLng, userLat], zoom: 16, pitch: 60, bearing: hdg, duration: 1500 });
+  setTimeout(() => map.resize(), 200);
 
-  // Fetch turn-by-turn steps if available
+  // Parse turn-by-turn steps
   navSteps = (currentRoute.legs && currentRoute.legs[0] && currentRoute.legs[0].steps) || [];
-  updateNavInfo(userLat, userLng);
+  updateNavUI(userLat, userLng);
 
-  // Start continuous GPS watch for navigation
+  // Continuous GPS watch
   if (navigator.geolocation) {
     navWatchId = navigator.geolocation.watchPosition((pos) => {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      // Re-center map on user and rotate to heading
       const hdg = (state.lastLat && state.lastLng)
-        ? bearing(state.lastLat, state.lastLng, lat, lng)
-        : map.getBearing();
-      map.easeTo({ center: [lng, lat], bearing: hdg, zoom: 15, duration: 1000 });
-      updateNavInfo(lat, lng);
-      updateStandings();
-    }, () => {}, { enableHighAccuracy: true });
-  }
+        ? bearing(state.lastLat, state.lastLng, lat, lng) : map.getBearing();
+      map.easeTo({ center: [lng, lat], bearing: hdg, zoom: 16, duration: 800 });
 
-  showToast('Navigation started', 'success');
+      // Speed from GPS or haversine
+      const spd = pos.coords.speed != null
+        ? Math.round(pos.coords.speed * 2.237)
+        : (state.lastLat ? Math.round(haversine(state.lastLat, state.lastLng, lat, lng) / ((Date.now() - state.lastTime) / 3600000)) : 0);
+      document.getElementById('speed-num').textContent = Math.min(spd, 200);
+
+      updateNavUI(lat, lng);
+      updateStandings();
+    }, () => {}, { enableHighAccuracy: true, timeout: 10000 });
+  }
 }
 
 function stopNavigation() {
-  navMode = false;
+  state.navMode = false;
   navRouteCoords = null;
 
-  // Hide nav bar, show route planner for leader
-  document.getElementById('nav-bar').classList.remove('visible');
+  // Remove full-screen mode
+  document.body.classList.remove('nav-mode');
+
+  // Hide all nav overlays
+  ['nav-pill','speed-badge','nav-bottom','nav-stop-x','standings-strip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('visible');
+  });
+
+  // Show route planner for leader
   if (state.myRole === 'leader') {
     const rp = document.getElementById('route-planner');
     if (rp) rp.style.display = '';
   }
 
-  // Hide standings, show photo grid
-  document.getElementById('standings-panel').classList.remove('visible');
-  document.getElementById('standings-strip').classList.remove('visible');
+  // Show photo grid
   const photoGrid = document.getElementById('photo-grid-section');
   if (photoGrid) photoGrid.style.display = '';
 
-  // Reset map view
-  map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+  // Show start nav button again if route still exists
+  if (currentRoute) showStartNavBtn();
+
+  // Reset map
+  map.flyTo({ pitch: 0, bearing: 0, zoom: 10, duration: 1000 });
+  setTimeout(() => map.resize(), 200);
 
   // Stop GPS watch
   if (navWatchId !== null) {
     navigator.geolocation.clearWatch(navWatchId);
     navWatchId = null;
   }
-
-  showToast('Navigation stopped', 'success');
 }
 
-function updateNavInfo(lat, lng) {
+function updateNavUI(lat, lng) {
   if (!navRouteCoords || !navRouteCoords.length) return;
   const dest = navRouteCoords[navRouteCoords.length - 1];
-  const instrEl = document.getElementById('nav-instruction');
-  const distEl = document.getElementById('nav-dist');
-  const etaEl = document.getElementById('nav-eta');
 
   if (lat && lng) {
     const distMiles = haversine(lat, lng, dest[1], dest[0]);
-    const distText = distMiles < 0.1 ? `${Math.round(distMiles * 5280)} ft` : `${distMiles.toFixed(1)} mi`;
-    distEl.textContent = `📍 ${distText} remaining`;
 
-    // ETA as actual clock time
+    // Bottom bar — arrival time + miles remaining
     const speedMph = (state.lastLat && state.lastLng && state.lastTime)
-      ? Math.max(haversine(state.lastLat, state.lastLng, lat, lng) / ((Date.now() - state.lastTime) / 3600000), 5)
-      : 30;
+      ? Math.max(haversine(state.lastLat, state.lastLng, lat, lng) / ((Date.now() - state.lastTime) / 3600000), 5) : 30;
     const etaMins = Math.round((distMiles / speedMph) * 60);
     const etaTime = new Date(Date.now() + etaMins * 60000);
-    const etaStr = etaTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    etaEl.textContent = `ETA ${etaStr} · ${etaMins} min`;
+    document.getElementById('nav-arrival').textContent = etaTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const remText = distMiles < 0.1 ? `${Math.round(distMiles * 5280)} ft left` : `${distMiles.toFixed(1)} mi left`;
+    document.getElementById('nav-remaining').textContent = remText;
 
-    // Turn-by-turn instruction from Mapbox steps
+    // Top pill — turn instruction
     if (distMiles < 0.05) {
-      instrEl.textContent = '🏁 You have arrived!';
+      document.getElementById('nav-arrow').textContent = '🏁';
+      document.getElementById('nav-dist').textContent = '';
+      document.getElementById('nav-street').textContent = 'You have arrived';
     } else if (navSteps && navSteps.length > 0) {
-      // Find nearest upcoming step
-      let nearestStep = navSteps[0];
-      let nearestDist = Infinity;
+      let nearestStep = navSteps[0], nearestDist = Infinity;
       for (const step of navSteps) {
         if (step.maneuver && step.maneuver.location) {
           const d = haversine(lat, lng, step.maneuver.location[1], step.maneuver.location[0]);
@@ -2695,21 +2743,18 @@ function updateNavInfo(lat, lng) {
         }
       }
       const turnDist = nearestDist < 0.1 ? `${Math.round(nearestDist * 5280)} ft` : `${nearestDist.toFixed(1)} mi`;
-      const arrow = getManeuverArrow(nearestStep.maneuver ? nearestStep.maneuver.type : '');
-      instrEl.textContent = `${arrow} ${nearestStep.maneuver ? nearestStep.maneuver.instruction || 'Continue' : 'Continue'}    ${turnDist}`;
-    } else if (distMiles < 0.2) {
-      instrEl.textContent = '📍 Destination ahead';
+      document.getElementById('nav-arrow').textContent = getManeuverArrow(nearestStep.maneuver ? nearestStep.maneuver.type : '');
+      document.getElementById('nav-dist').textContent = turnDist;
+      document.getElementById('nav-street').textContent = nearestStep.name || '';
     } else {
-      instrEl.textContent = '→ Follow the route';
+      document.getElementById('nav-arrow').textContent = '↑';
+      document.getElementById('nav-dist').textContent = remText;
+      document.getElementById('nav-street').textContent = '';
     }
-  } else {
-    const totalDist = currentRoute ? (currentRoute.distance / 1609.34).toFixed(1) : '?';
-    const totalMin = currentRoute ? Math.round(currentRoute.duration / 60) : '?';
-    distEl.textContent = `📍 ${totalDist} mi total`;
-    etaEl.textContent = `~${totalMin} min drive`;
-    instrEl.textContent = '→ Follow the route';
   }
 }
+// Backward compat alias
+function updateNavInfo(lat, lng) { updateNavUI(lat, lng); }
 
 function getManeuverArrow(type) {
   const arrows = { 'turn': '↱', 'turn right': '↱', 'turn left': '↰', 'slight right': '↗', 'slight left': '↖', 'sharp right': '⤵', 'sharp left': '⤴', 'uturn': '↩', 'merge': '↗', 'fork': '⑂', 'roundabout': '↻', 'depart': '→', 'arrive': '🏁' };
@@ -2719,6 +2764,8 @@ function getManeuverArrow(type) {
 // Show START NAVIGATION button after route is drawn
 function showStartNavBtn() {
   document.getElementById('start-nav-btn').classList.add('visible');
+  const panelBtn = document.getElementById('panel-nav-btn');
+  if (panelBtn) panelBtn.classList.add('visible');
 }
 
 // Hook: call showStartNavBtn after getRoute succeeds
