@@ -483,7 +483,7 @@
     <div class="right-panel">
       <!-- Header -->
       <div class="panel-header">
-        <div class="panel-title">CHICAGO EXOTIC RUN</div>
+        <div class="panel-title" id="rally-name">LOADING ROUTE...</div>
         <div class="panel-meta">
           <span class="live-badge"><span class="live-dot"></span> LIVE</span>
           <span class="count-badge" id="p-count">0 ON ROUTE</span>
@@ -603,25 +603,48 @@
       zoom: 9
     })
 
-    map.on('load', () => {
-      map.resize()
-      // Route line
-      map.addSource('route', {
-        type: 'geojson',
-        data: {
+    // Draw route from Supabase data
+    function drawRoute(waypoints) {
+      const coords = typeof waypoints === 'string' ? JSON.parse(waypoints) : waypoints
+      if (map.getSource('route')) {
+        map.getSource('route').setData({
           type: 'Feature',
-          geometry: {
-            type: 'LineString',
-            coordinates: [[-87.6298, 41.8781], [-88.3090, 41.9139]]
+          geometry: { type: 'LineString', coordinates: coords }
+        })
+      } else {
+        map.addSource('route', {
+          type: 'geojson',
+          data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }
+        })
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          paint: { 'line-color': '#00C8FF', 'line-width': 3, 'line-opacity': 0.8 }
+        })
+      }
+    }
+
+    map.on('load', async () => {
+      map.resize()
+
+      // Load active route from Supabase
+      const { data: routes } = await db.from('rally_routes').select('*').eq('is_active', true).limit(1)
+      if (routes && routes.length > 0) {
+        const route = routes[0]
+        document.getElementById('rally-name').textContent = route.name.toUpperCase()
+        drawRoute(route.waypoints)
+      }
+
+      // Subscribe to route changes — redraw instantly
+      db.channel('rally-routes-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rally_routes' }, (payload) => {
+          if (payload.new && payload.new.is_active) {
+            document.getElementById('rally-name').textContent = payload.new.name.toUpperCase()
+            drawRoute(payload.new.waypoints)
           }
-        }
-      })
-      map.addLayer({
-        id: 'route-line',
-        type: 'line',
-        source: 'route',
-        paint: { 'line-color': '#00C8FF', 'line-width': 3, 'line-opacity': 0.8 }
-      })
+        })
+        .subscribe()
     })
 
     // Markers store: Map<id, {marker, popup}>
