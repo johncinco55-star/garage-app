@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Garage — Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #09090B;
+      --cyan: #00C8FF;
+      --green: #00FF88;
+      --red: #FF4444;
+      --amber: #FFB800;
+      --sidebar-w: 180px;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(0,200,255,0.15);
+    }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: #fff;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #0A0A0F;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      padding: 0 18px 28px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.8); }
+    .nav-link.active {
+      color: #fff;
+      border-left-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .rally-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 36px 32px 100px;
+      min-height: 100vh;
+    }
+    .page-title {
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 32px;
+      letter-spacing: -1px;
+    }
+    .page-title .solid { color: #fff; }
+    .page-title .outline {
+      -webkit-text-stroke: 1px #fff;
+      color: transparent;
+    }
+
+    /* ── LISTING GRID ── */
+    .listings-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .listing-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .listing-card:hover {
+      border-color: rgba(0,200,255,0.4);
+      transform: translateY(-2px);
+    }
+
+    /* photo */
+    .listing-photo {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      display: block;
+      border-radius: 12px 12px 0 0;
+    }
+    .listing-photo-placeholder {
+      width: 100%;
+      height: 180px;
+      background: rgba(255,255,255,0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      border-radius: 12px 12px 0 0;
+    }
+
+    .listing-body {
+      padding: 16px 18px 18px;
+    }
+    .listing-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .listing-price {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+    .listing-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .listing-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+    .color-swatch {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.2);
+      flex-shrink: 0;
+    }
+    .listing-seller {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 14px;
+    }
+    .listing-desc {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .btn-contact {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid var(--cyan);
+      background: transparent;
+      color: var(--cyan);
+      transition: background 0.2s;
+      margin-bottom: 8px;
+    }
+    .btn-contact:hover { background: rgba(0,200,255,0.1); }
+    .btn-mark-sold {
+      width: 100%;
+      padding: 9px;
+      border-radius: 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255,68,68,0.3);
+      background: transparent;
+      color: var(--red);
+      transition: background 0.2s;
+    }
+    .btn-mark-sold:hover { background: rgba(255,68,68,0.08); }
+
+    /* ── EMPTY ── */
+    .empty-state {
+      grid-column: 1 / -1;
+      padding: 80px 20px;
+      text-align: center;
+      color: rgba(255,255,255,0.2);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--cyan);
+      color: #000;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 20px rgba(0,200,255,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 50;
+    }
+    .fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(0,200,255,0.55); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 99999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #0F0F14;
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 7px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--cyan);
+    }
+    .form-select option { background: #111; }
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    /* Color swatch selector */
+    .color-selector {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .color-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+    .color-option input[type="radio"] { display: none; }
+    .color-circle {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.1);
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .color-option input[type="radio"]:checked + .color-circle {
+      border-color: var(--cyan);
+      transform: scale(1.15);
+    }
+    .color-option span {
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+      text-align: center;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      border: none;
+      background: var(--cyan);
+      color: #000;
+      transition: opacity 0.2s;
+      margin-top: 6px;
+    }
+    .btn-submit:hover { opacity: 0.88; }
+    .btn-cancel {
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: transparent;
+      color: rgba(255,255,255,0.5);
+      margin-top: 10px;
+      transition: border-color 0.2s;
+    }
+    .btn-cancel:hover { border-color: rgba(255,255,255,0.3); }
+
+    /* ── TOAST ── */
+    .toast-container {
+      position: fixed;
+      bottom: 90px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 999998;
+      pointer-events: none;
+    }
+    .toast {
+      background: #1a1a22;
+      border: 1px solid rgba(0,200,255,0.25);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      color: #fff;
+      font-weight: 500;
+      animation: toastIn 0.3s ease;
+      max-width: 300px;
+    }
+    .toast.error { border-color: rgba(255,68,68,0.4); color: var(--red); }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── MOBILE BOTTOM NAV ── */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #0A0A0F;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 0 14px;
+      z-index: 200;
+    }
+    .bottom-nav-inner { display: flex; justify-content: space-around; }
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .bn-item.active { color: var(--cyan); }
+    .bn-icon { font-size: 20px; line-height: 1; }
+
+    @media (max-width: 1024px) {
+      .listings-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px 16px 90px; }
+      .page-title { font-size: 36px; margin-bottom: 20px; }
+      .listings-grid { grid-template-columns: 1fr; }
+      .bottom-nav { display: block; }
+      .fab { bottom: 80px; right: 20px; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">The Garage</div>
+    <a href="index.html" class="nav-link">🏠 Dashboard</a>
+    <a href="collection.html" class="nav-link">🚗 Collection</a>
+    <a href="rally.html" class="nav-link">
+      <span class="rally-dot"></span> Rally
+    </a>
+    <a href="events.html" class="nav-link">📅 Events</a>
+    <a href="market.html" class="nav-link active">🛒 Market</a>
+    <a href="analytics.html" class="nav-link">📊 Analytics</a>
+    <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
+    <a href="vault.html" class="nav-link">🔒 Vault</a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <h1 class="page-title">
+      <span class="solid">MARKET </span><span class="outline">EXOTICS FOR SALE</span>
+    </h1>
+
+    <div class="listings-grid" id="listings-grid">
+      <div class="empty-state" id="loading-state">Loading...</div>
+    </div>
+  </main>
+
+  <!-- FAB -->
+  <button class="fab" id="fab-list" title="List My Car">+</button>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a href="index.html" class="bn-item"><span class="bn-icon">🏠</span>Home</a>
+      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span>Cars</a>
+      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span>Rally</a>
+      <a href="events.html" class="bn-item"><span class="bn-icon">📅</span>Events</a>
+      <a href="market.html" class="bn-item active"><span class="bn-icon">🛒</span>Market</a>
+    </div>
+  </nav>
+
+  <!-- LIST CAR MODAL -->
+  <div class="modal-overlay" id="list-modal">
+    <div class="modal">
+      <div class="modal-title">List My Car</div>
+      <div class="form-group">
+        <label class="form-label">Your Name</label>
+        <input class="form-input" id="ls-seller" type="text" placeholder="Your name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Make</label>
+          <input class="form-input" id="ls-make" type="text" placeholder="Porsche">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Model</label>
+          <input class="form-input" id="ls-model" type="text" placeholder="911 GT3">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Year</label>
+          <input class="form-input" id="ls-year" type="number" placeholder="2022" min="1900" max="2099">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mileage</label>
+          <input class="form-input" id="ls-mileage" type="number" placeholder="4200" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Price (USD)</label>
+        <input class="form-input" id="ls-price" type="number" placeholder="245000" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <div class="color-selector">
+          <label class="color-option">
+            <input type="radio" name="ls-color" value="white">
+            <div class="color-circle" style="background:#FFFFFF;"></div>
+            <span>White</span>
+          </label>
+          <label class="color-option">
+            <input type="radio" name="ls-color" value="black" checked>
+            <div class="color-circle" style="background:#1a1a1a;"></div>
+            <span>Black</span>
+          </label>
+          <label class="color-option">
+            <input type="radio" name="ls-color" value="red">
+            <div class="color-circle" style="background:#FF4444;"></div>
+            <span>Red</span>
+          </label>
+          <label class="color-option">
+            <input type="radio" name="ls-color" value="blue">
+            <div class="color-circle" style="background:#3388FF;"></div>
+            <span>Blue</span>
+          </label>
+          <label class="color-option">
+            <input type="radio" name="ls-color" value="yellow">
+            <div class="color-circle" style="background:#FFD700;"></div>
+            <span>Yellow</span>
+          </label>
+          <label class="color-option">
+            <input type="radio" name="ls-color" value="orange">
+            <div class="color-circle" style="background:#FF8C00;"></div>
+            <span>Orange</span>
+          </label>
+          <label class="color-option">
+            <input type="radio" name="ls-color" value="green">
+            <div class="color-circle" style="background:#00FF88;"></div>
+            <span>Green</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="ls-desc" placeholder="Condition, mods, history notes..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contact (phone, email, or WhatsApp)</label>
+        <input class="form-input" id="ls-contact" type="text" placeholder="+1 (555) 000-0000 or seller@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Photo URL (optional)</label>
+        <input class="form-input" id="ls-photo" type="url" placeholder="https://...">
+      </div>
+      <button class="btn-submit" id="btn-list-car">LIST FOR SALE</button>
+      <button class="btn-cancel" id="btn-cancel-list">Cancel</button>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    const { createClient } = supabase
+    const db = createClient(
+      'https://mjmuqhridetyqrytouhe.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qbXVxaHJpZGV0eXFyeXRvdWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTYxNDQsImV4cCI6MjA5MDU5MjE0NH0.QURk9RdMTpXGcVwjcVGG9XQ5xKktPlYa3L9PBmyoYpw'
+    )
+
+    // ── Utilities ──────────────────────────────────────────
+    function esc(str) {
+      return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+
+    function timeAgo(dateStr) {
+      const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+      if (diff < 60) return 'just now'
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago'
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago'
+      return Math.floor(diff/86400) + 'd ago'
+    }
+
+    function formatPrice(num) {
+      if (!num && num !== 0) return '—'
+      return '$' + Number(num).toLocaleString('en-US')
+    }
+
+    function formatMileage(num) {
+      if (!num && num !== 0) return '—'
+      return Number(num).toLocaleString('en-US') + ' mi'
+    }
+
+    function colorHex(name) {
+      const map = {
+        white: '#FFFFFF', black: '#1a1a1a', red: '#FF4444',
+        blue: '#3388FF', yellow: '#FFD700', orange: '#FF8C00', green: '#00FF88'
+      }
+      return map[(name || '').toLowerCase()] || '#888'
+    }
+
+    function showToast(msg, isError = false) {
+      const container = document.getElementById('toast-container')
+      const t = document.createElement('div')
+      t.className = 'toast' + (isError ? ' error' : '')
+      t.textContent = msg
+      container.appendChild(t)
+      setTimeout(() => t.remove(), 3500)
+    }
+
+    function getOwnerName() { return localStorage.getItem('garage_owner_name') || '' }
+
+    function contactAction(contact) {
+      if (!contact) return
+      const trimmed = contact.trim()
+      if (trimmed.includes('@')) {
+        window.location.href = 'mailto:' + trimmed
+      } else if (/^\+?[\d\s\(\)\-]{7,}/.test(trimmed)) {
+        window.location.href = 'tel:' + trimmed.replace(/\s/g, '')
+      } else {
+        window.open(trimmed, '_blank')
+      }
+    }
+
+    // ── Load Listings ──────────────────────────────────────
+    async function loadListings() {
+      const grid = document.getElementById('listings-grid')
+
+      const { data: listings, error } = await db
+        .from('listings')
+        .select('*')
+        .eq('is_sold', false)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        grid.innerHTML = '<div class="empty-state">Failed to load listings.</div>'
+        return
+      }
+
+      if (!listings || listings.length === 0) {
+        grid.innerHTML = '<div class="empty-state">NO CARS FOR SALE YET. LIST YOURS.</div>'
+        return
+      }
+
+      renderListings(listings)
+    }
+
+    function renderListings(listings) {
+      const grid = document.getElementById('listings-grid')
+      if (!listings || listings.length === 0) {
+        grid.innerHTML = '<div class="empty-state">NO CARS FOR SALE YET. LIST YOURS.</div>'
+        return
+      }
+
+      const ownerName = getOwnerName()
+      grid.innerHTML = listings.map(listing => buildCard(listing, ownerName)).join('')
+      attachListingListeners()
+    }
+
+    function buildCard(listing, ownerName) {
+      const isOwner = ownerName && listing.seller_name === ownerName
+      const photoHtml = listing.photo_url
+        ? `<img class="listing-photo" src="${esc(listing.photo_url)}" alt="${esc(listing.make)} ${esc(listing.model)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          + `<div class="listing-photo-placeholder" style="display:none;">🏎️</div>`
+        : `<div class="listing-photo-placeholder">🏎️</div>`
+
+      return `
+        <div class="listing-card" data-id="${esc(listing.id)}">
+          ${photoHtml}
+          <div class="listing-body">
+            <div class="listing-name">${esc(listing.year || '')} ${esc(listing.make)} ${esc(listing.model)}</div>
+            <div class="listing-price">${formatPrice(listing.price)}</div>
+            <div class="listing-meta">
+              <div class="listing-meta-item">
+                <span>🛣️</span>
+                <span>${formatMileage(listing.mileage)}</span>
+              </div>
+              <div class="listing-meta-item">
+                <div class="color-swatch" style="background:${colorHex(listing.color)};"></div>
+                <span style="text-transform:capitalize">${esc(listing.color || '—')}</span>
+              </div>
+            </div>
+            ${listing.description ? `<div class="listing-desc">${esc(listing.description)}</div>` : ''}
+            <div class="listing-seller">Listed by ${esc(listing.seller_name || 'Anonymous')} · ${timeAgo(listing.created_at)}</div>
+            ${listing.contact ? `<button class="btn-contact" data-contact="${esc(listing.contact)}">CONTACT SELLER</button>` : ''}
+            ${isOwner ? `<button class="btn-mark-sold" data-listing-id="${esc(listing.id)}">MARK AS SOLD</button>` : ''}
+          </div>
+        </div>
+      `
+    }
+
+    function attachListingListeners() {
+      document.querySelectorAll('.btn-contact').forEach(btn => {
+        btn.addEventListener('click', () => contactAction(btn.dataset.contact))
+      })
+      document.querySelectorAll('.btn-mark-sold').forEach(btn => {
+        btn.addEventListener('click', () => handleMarkSold(btn.dataset.listingId))
+      })
+    }
+
+    async function handleMarkSold(listingId) {
+      if (!confirm('Mark this car as sold? It will be removed from the market.')) return
+      const { error } = await db.from('listings').update({ is_sold: true }).eq('id', listingId)
+      if (error) {
+        showToast('Failed to update listing.', true)
+        return
+      }
+      const card = document.querySelector(`.listing-card[data-id="${listingId}"]`)
+      if (card) {
+        card.style.opacity = '0'
+        card.style.transform = 'scale(0.95)'
+        card.style.transition = 'opacity 0.3s, transform 0.3s'
+        setTimeout(() => { card.remove(); checkEmpty() }, 320)
+      }
+      showToast('Listing marked as sold.')
+    }
+
+    function checkEmpty() {
+      const grid = document.getElementById('listings-grid')
+      if (grid.querySelectorAll('.listing-card').length === 0) {
+        grid.innerHTML = '<div class="empty-state">NO CARS FOR SALE YET. LIST YOURS.</div>'
+      }
+    }
+
+    // ── List Car Modal ─────────────────────────────────────
+    document.getElementById('fab-list').addEventListener('click', () => {
+      document.getElementById('ls-seller').value = getOwnerName()
+      document.getElementById('list-modal').classList.add('open')
+    })
+    document.getElementById('btn-cancel-list').addEventListener('click', () => {
+      document.getElementById('list-modal').classList.remove('open')
+    })
+    document.getElementById('list-modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('list-modal')) {
+        document.getElementById('list-modal').classList.remove('open')
+      }
+    })
+
+    document.getElementById('btn-list-car').addEventListener('click', async () => {
+      const seller  = document.getElementById('ls-seller').value.trim()
+      const make    = document.getElementById('ls-make').value.trim()
+      const model   = document.getElementById('ls-model').value.trim()
+      const year    = parseInt(document.getElementById('ls-year').value) || null
+      const mileage = parseInt(document.getElementById('ls-mileage').value) || null
+      const price   = parseFloat(document.getElementById('ls-price').value) || null
+      const desc    = document.getElementById('ls-desc').value.trim()
+      const contact = document.getElementById('ls-contact').value.trim()
+      const photo   = document.getElementById('ls-photo').value.trim()
+      const colorInput = document.querySelector('input[name="ls-color"]:checked')
+      const color   = colorInput ? colorInput.value : 'black'
+
+      if (!make || !model) {
+        showToast('Please enter at least the make and model.', true)
+        return
+      }
+
+      const btn = document.getElementById('btn-list-car')
+      btn.disabled = true
+      btn.textContent = 'LISTING...'
+
+      const { data, error } = await db.from('listings').insert({
+        seller_name: seller || 'Anonymous',
+        make, model, year, mileage, price,
+        color, description: desc,
+        contact: contact || null,
+        photo_url: photo || null,
+        is_sold: false
+      }).select().single()
+
+      btn.disabled = false
+      btn.textContent = 'LIST FOR SALE'
+
+      if (error) {
+        showToast('Failed to list car. ' + (error.message || ''), true)
+        return
+      }
+
+      if (seller) localStorage.setItem('garage_owner_name', seller)
+
+      document.getElementById('list-modal').classList.remove('open')
+      ;['ls-seller','ls-make','ls-model','ls-year','ls-mileage','ls-price','ls-desc','ls-contact','ls-photo'].forEach(id => {
+        document.getElementById(id).value = ''
+      })
+
+      showToast('Car listed for sale!')
+    })
+
+    // ── Realtime ───────────────────────────────────────────
+    db.channel('listings-inserts')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listings' }, async () => {
+        await loadListings()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings' }, async () => {
+        await loadListings()
+      })
+      .subscribe()
+
+    // ── Init ───────────────────────────────────────────────
+    loadListings()
+  </script>
+</body>
+</html>

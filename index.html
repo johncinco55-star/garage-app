@@ -127,6 +127,11 @@
       line-height: 1;
     }
 
+    /* ── STATS ROW 6-col on wide, 3-col on mobile ── */
+    @media (min-width: 769px) {
+      .stats-row { grid-template-columns: repeat(6, 1fr); }
+    }
+
     /* ── SECTIONS ── */
     .sections-row {
       display: grid;
@@ -252,6 +257,8 @@
     <a href="rally.html" class="nav-link">
       <span class="rally-dot"></span> Rally
     </a>
+    <a href="events.html" class="nav-link">📅 Events</a>
+    <a href="market.html" class="nav-link">🛒 Market</a>
     <a href="analytics.html" class="nav-link">📊 Analytics</a>
     <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
     <a href="vault.html" class="nav-link">🔒 Vault</a>
@@ -281,6 +288,14 @@
         <div class="stat-label">Service Alerts</div>
         <div class="stat-value" id="stat-alerts">—</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">Upcoming Events</div>
+        <div class="stat-value" id="events-count">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Cars For Sale</div>
+        <div class="stat-value" id="listings-count">—</div>
+      </div>
     </div>
 
     <!-- SECTIONS -->
@@ -303,16 +318,37 @@
         <div id="fleet-list"><div class="empty-state">Loading...</div></div>
       </div>
     </div>
+
+    <!-- UPCOMING EVENTS + LATEST LISTINGS -->
+    <div class="sections-row" style="margin-top:20px">
+      <!-- Upcoming Events -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-title">Upcoming Events</span>
+          <a href="events.html" style="font-size:11px;color:var(--cyan);text-decoration:none;font-weight:600;">VIEW ALL →</a>
+        </div>
+        <div id="events-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- Latest Listings -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-title">Latest Listings</span>
+          <a href="market.html" style="font-size:11px;color:var(--cyan);text-decoration:none;font-weight:600;">VIEW MARKET →</a>
+        </div>
+        <div id="listings-list"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
   </main>
 
   <!-- MOBILE BOTTOM NAV -->
   <nav class="bottom-nav">
     <div class="bottom-nav-inner">
-      <a href="index.html" class="bn-item active"><span class="bn-icon">🏠</span>Home</a>
-      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span>Cars</a>
-      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span>Rally</a>
-      <a href="analytics.html" class="bn-item"><span class="bn-icon">📊</span>Stats</a>
-      <a href="maintenance.html" class="bn-item"><span class="bn-icon">🔧</span>Service</a>
+      <a href="index.html" class="bn-item active"><span class="bn-icon">🏠</span><span>Home</span></a>
+      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span><span>Cars</span></a>
+      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span><span>Rally</span></a>
+      <a href="events.html" class="bn-item"><span class="bn-icon">📅</span><span>Events</span></a>
+      <a href="market.html" class="bn-item"><span class="bn-icon">🛒</span><span>Market</span></a>
     </div>
   </nav>
 
@@ -402,9 +438,68 @@
       `).join('')
     }
 
+    function formatEventDate(dateStr) {
+      if (!dateStr) return '—'
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+
+    async function loadEventsSection() {
+      const { data, count } = await db
+        .from('events')
+        .select('*', { count: 'exact' })
+        .order('event_date', { ascending: true })
+        .limit(3)
+
+      document.getElementById('events-count').textContent = count ?? 0
+
+      const list = document.getElementById('events-list')
+      if (!data || data.length === 0) {
+        list.innerHTML = '<div class="empty-state">NO UPCOMING EVENTS.</div>'
+        return
+      }
+      list.innerHTML = data.map(e => `
+        <div class="activity-item">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="activity-name">${esc(e.title)}</span>
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(0,200,255,0.12);color:var(--cyan);font-weight:600;">${esc(e.type || 'Event')}</span>
+          </div>
+          <div class="activity-make">${esc(e.location || '')}</div>
+          <div class="activity-time">${formatEventDate(e.event_date)}</div>
+        </div>
+      `).join('')
+    }
+
+    async function loadListingsSection() {
+      const { data, count } = await db
+        .from('listings')
+        .select('*', { count: 'exact' })
+        .eq('is_sold', false)
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      document.getElementById('listings-count').textContent = count ?? 0
+
+      const list = document.getElementById('listings-list')
+      if (!data || data.length === 0) {
+        list.innerHTML = '<div class="empty-state">NO LISTINGS YET.</div>'
+        return
+      }
+      list.innerHTML = data.map(l => `
+        <div class="fleet-item">
+          <div class="fleet-info">
+            <div class="fleet-name">${esc(l.make || '')} ${esc(l.model || '')}</div>
+            <div class="fleet-meta">${esc(l.seller_name || '')}</div>
+          </div>
+          <div style="color:var(--cyan);font-weight:700;font-size:13px">${l.price ? '$' + Number(l.price).toLocaleString() : '—'}</div>
+        </div>
+      `).join('')
+    }
+
     loadStats()
     loadActivity()
     loadFleet()
+    loadEventsSection()
+    loadListingsSection()
 
     // Realtime: messages
     db.channel('dashboard-messages')

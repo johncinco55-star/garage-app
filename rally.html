@@ -824,6 +824,30 @@
     .bottom-nav-item.active { color: var(--cyan); }
     .bottom-nav-item span:first-child { font-size: 20px; }
 
+    /* ───── HAZARD BAR ───── */
+    .hazard-bar {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      display: none; gap: 6px; z-index: 80;
+      background: rgba(10,10,15,0.85); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 8px 12px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .hazard-bar.visible { display: flex; }
+    .hazard-btn {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 8px 12px; color: #fff;
+      font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    }
+    .hazard-btn:hover { background: rgba(0,200,255,0.15); border-color: rgba(0,200,255,0.3); }
+    .hazard-btn.active { background: rgba(255,68,68,0.2); border-color: rgba(255,68,68,0.4); color: var(--red); }
+    .hazard-pin { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+    .hazard-pin.police { background: rgba(255,68,68,0.8); animation: pulse-dot 1.5s infinite; }
+    .hazard-pin.accident { background: rgba(255,140,0,0.8); border-radius: 0; clip-path: polygon(50% 0%,0% 100%,100% 100%); }
+    .hazard-pin.pothole { background: rgba(255,184,0,0.8); }
+    .hazard-pin.road_closed { background: rgba(255,255,255,0.8); color: #000; font-weight: 900; }
+    .hazard-pin.hazard { background: rgba(255,184,0,0.6); }
+
     /* ───── MOBILE STYLES ───── */
     @media (max-width: 768px) {
       .sidebar { display: none; }
@@ -873,6 +897,8 @@
     <span class="nav-icon">📍</span> Rally
     <span class="rally-dot"></span>
   </a>
+  <a href="events.html" class="nav-link"><span class="nav-icon">📅</span> Events</a>
+  <a href="market.html" class="nav-link"><span class="nav-icon">🛒</span> Market</a>
   <a href="analytics.html" class="nav-link"><span class="nav-icon">📊</span> Analytics</a>
   <a href="maintenance.html" class="nav-link"><span class="nav-icon">🔧</span> Maintenance</a>
   <a href="vault.html" class="nav-link"><span class="nav-icon">🔒</span> Vault</a>
@@ -902,6 +928,15 @@
         <button class="planner-btn danger" id="clear-route-btn">CLEAR</button>
         <div id="route-badge" class="route-badge" style="display:none"></div>
       </div>
+    </div>
+
+    <!-- HAZARD BAR (visible after joining) -->
+    <div class="hazard-bar" id="hazard-bar">
+      <button class="hazard-btn" data-type="police" onclick="startHazardDrop('police')">🚨 Police</button>
+      <button class="hazard-btn" data-type="accident" onclick="startHazardDrop('accident')">💥 Accident</button>
+      <button class="hazard-btn" data-type="pothole" onclick="startHazardDrop('pothole')">🕳️ Pothole</button>
+      <button class="hazard-btn" data-type="road_closed" onclick="startHazardDrop('road_closed')">🚧 Closed</button>
+      <button class="hazard-btn" data-type="hazard" onclick="startHazardDrop('hazard')">⚠️ Hazard</button>
     </div>
   </div>
 
@@ -967,8 +1002,8 @@
   <a href="index.html" class="bottom-nav-item"><span>🏠</span><span>Home</span></a>
   <a href="collection.html" class="bottom-nav-item"><span>🚗</span><span>Cars</span></a>
   <a href="rally.html" class="bottom-nav-item active"><span>📍</span><span>Rally</span></a>
-  <a href="analytics.html" class="bottom-nav-item"><span>📊</span><span>Stats</span></a>
-  <a href="vault.html" class="bottom-nav-item"><span>🔒</span><span>Vault</span></a>
+  <a href="events.html" class="bottom-nav-item"><span>📅</span><span>Events</span></a>
+  <a href="market.html" class="bottom-nav-item"><span>🛒</span><span>Market</span></a>
 </nav>
 
 <!-- CREATE RALLY MODAL -->
@@ -2240,6 +2275,95 @@ map.on('load', async () => {
   const restored = await restoreSession();
   if (!state.joined) await preloadFromUrl();
 });
+
+// ══════════════════════════════════════
+// HAZARD REPORTING
+// ══════════════════════════════════════
+const HAZARD_ICONS = { police: '🚨', accident: '💥', pothole: '🕳️', road_closed: '🚧', hazard: '⚠️' };
+const HAZARD_CLASSES = { police: 'police', accident: 'accident', pothole: 'pothole', road_closed: 'road_closed', hazard: 'hazard' };
+let hazardDropType = null;
+const hazardMarkers = new Map();
+
+function startHazardDrop(type) {
+  if (hazardDropType === type) { cancelHazardDrop(); return; }
+  hazardDropType = type;
+  document.querySelectorAll('.hazard-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.hazard-btn[data-type="${type}"]`).classList.add('active');
+  document.getElementById('map').style.cursor = 'crosshair';
+}
+
+function cancelHazardDrop() {
+  hazardDropType = null;
+  document.querySelectorAll('.hazard-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('map').style.cursor = '';
+}
+
+// Map click → drop hazard
+map.on('click', async (e) => {
+  if (!hazardDropType || !state.joined) return;
+  const type = hazardDropType;
+  cancelHazardDrop();
+  await db.from('hazards').insert({
+    rally_id: state.rallyId,
+    reported_by: state.myName,
+    type: type,
+    lat: e.lngLat.lat,
+    lng: e.lngLat.lng,
+    is_active: true
+  });
+});
+
+function addHazardMarker(h) {
+  if (hazardMarkers.has(h.id)) return;
+  const el = document.createElement('div');
+  el.className = 'hazard-pin ' + (HAZARD_CLASSES[h.type] || 'hazard');
+  el.textContent = h.type === 'road_closed' ? '✕' : '';
+  el.title = `${HAZARD_ICONS[h.type] || '⚠️'} ${h.type.replace('_',' ')} — reported by ${esc(h.reported_by)}`;
+  const marker = new mapboxgl.Marker({ element: el }).setLngLat([h.lng, h.lat]).addTo(map);
+  hazardMarkers.set(h.id, marker);
+
+  // Auto-expire after 30 min visually
+  setTimeout(() => {
+    const m = hazardMarkers.get(h.id);
+    if (m) { m.remove(); hazardMarkers.delete(h.id); }
+  }, 30 * 60 * 1000);
+}
+
+// Load existing hazards
+async function loadHazards() {
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { data } = await db.from('hazards').select('*').eq('is_active', true).gte('created_at', thirtyMinAgo);
+  (data || []).forEach(addHazardMarker);
+}
+
+// Realtime hazards
+db.channel('hazards-rt')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'hazards' }, (payload) => {
+    addHazardMarker(payload.new);
+    if (payload.new.reported_by !== state.myName) {
+      showToast(`${HAZARD_ICONS[payload.new.type] || '⚠️'} ${esc(payload.new.reported_by)} reported ${payload.new.type.replace('_',' ')} ahead`);
+    }
+  })
+  .subscribe();
+
+// Show hazard bar when joined
+function showHazardBar() { document.getElementById('hazard-bar').classList.add('visible'); }
+function hideHazardBar() { document.getElementById('hazard-bar').classList.remove('visible'); }
+
+// Hook into existing join/leave flow
+const origShowLiveUI = typeof showLiveUI === 'function' ? showLiveUI : null;
+if (origShowLiveUI) {
+  const _origShow = showLiveUI;
+  showLiveUI = function() { _origShow.apply(this, arguments); showHazardBar(); loadHazards(); };
+}
+const origLeaveCleanup = typeof leaveCleanup === 'function' ? leaveCleanup : null;
+if (origLeaveCleanup) {
+  const _origLeave = leaveCleanup;
+  leaveCleanup = function() { _origLeave.apply(this, arguments); hideHazardBar(); cancelHazardDrop(); };
+}
+
+// If already joined on load, show hazard bar
+if (state.joined) { showHazardBar(); loadHazards(); }
 
 </script>
 </body>

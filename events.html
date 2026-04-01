@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Garage — Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #09090B;
+      --cyan: #00C8FF;
+      --green: #00FF88;
+      --red: #FF4444;
+      --amber: #FFB800;
+      --sidebar-w: 180px;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(0,200,255,0.15);
+    }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: #fff;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #0A0A0F;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      padding: 0 18px 28px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+    .nav-link:hover { color: rgba(255,255,255,0.8); }
+    .nav-link.active {
+      color: #fff;
+      border-left-color: var(--cyan);
+      background: rgba(0,200,255,0.06);
+    }
+    .rally-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 36px 32px 100px;
+      min-height: 100vh;
+    }
+    .page-title {
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 32px;
+      letter-spacing: -1px;
+    }
+    .page-title .solid { color: #fff; }
+    .page-title .outline {
+      -webkit-text-stroke: 1px #fff;
+      color: transparent;
+    }
+
+    /* ── EVENT GRID ── */
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .event-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .event-card:hover {
+      border-color: rgba(0,200,255,0.4);
+      transform: translateY(-2px);
+    }
+    .event-card-inner { padding: 20px; }
+
+    .type-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+    }
+    .badge-cyan   { background: rgba(0,200,255,0.15); color: var(--cyan); border: 1px solid rgba(0,200,255,0.3); }
+    .badge-green  { background: rgba(0,255,136,0.12); color: var(--green); border: 1px solid rgba(0,255,136,0.25); }
+    .badge-amber  { background: rgba(255,184,0,0.12); color: var(--amber); border: 1px solid rgba(255,184,0,0.25); }
+    .badge-red    { background: rgba(255,68,68,0.12); color: var(--red); border: 1px solid rgba(255,68,68,0.25); }
+
+    .event-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+    .event-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .event-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+    }
+    .event-rsvp-count {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 14px;
+    }
+    .btn-rsvp {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1.5px solid var(--cyan);
+      background: transparent;
+      color: var(--cyan);
+    }
+    .btn-rsvp:hover { background: rgba(0,200,255,0.1); }
+    .btn-rsvp.going {
+      background: var(--cyan);
+      color: #000;
+    }
+
+    /* expanded details */
+    .event-details {
+      display: none;
+      padding: 0 20px 20px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      margin-top: 16px;
+    }
+    .event-details.open { display: block; }
+    .event-desc {
+      font-size: 13px;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.6;
+      margin-top: 14px;
+      margin-bottom: 16px;
+    }
+    .rsvp-list-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .rsvp-member {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 12px;
+    }
+    .rsvp-member:last-child { border-bottom: none; }
+    .rsvp-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(0,200,255,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+      flex-shrink: 0;
+    }
+    .rsvp-name { font-weight: 600; color: #fff; }
+    .rsvp-car { color: rgba(255,255,255,0.4); font-size: 11px; }
+    .btn-share {
+      margin-top: 14px;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      transition: all 0.2s;
+    }
+    .btn-share:hover { border-color: rgba(255,255,255,0.35); color: #fff; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      grid-column: 1 / -1;
+      padding: 80px 20px;
+      text-align: center;
+      color: rgba(255,255,255,0.2);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--cyan);
+      color: #000;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 20px rgba(0,200,255,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 50;
+    }
+    .fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(0,200,255,0.55); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 99999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #0F0F14;
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 7px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--cyan);
+    }
+    .form-select option { background: #111; }
+    .form-textarea { resize: vertical; min-height: 90px; }
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      border: none;
+      background: var(--cyan);
+      color: #000;
+      transition: opacity 0.2s;
+      margin-top: 6px;
+    }
+    .btn-submit:hover { opacity: 0.88; }
+    .btn-cancel {
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: transparent;
+      color: rgba(255,255,255,0.5);
+      margin-top: 10px;
+      transition: border-color 0.2s;
+    }
+    .btn-cancel:hover { border-color: rgba(255,255,255,0.3); }
+
+    /* Name prompt modal */
+    .name-prompt-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 999999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .name-prompt-overlay.open { display: flex; }
+
+    /* ── TOAST ── */
+    .toast-container {
+      position: fixed;
+      bottom: 90px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 999998;
+      pointer-events: none;
+    }
+    .toast {
+      background: #1a1a22;
+      border: 1px solid rgba(0,200,255,0.25);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      color: #fff;
+      font-weight: 500;
+      animation: toastIn 0.3s ease;
+      max-width: 300px;
+    }
+    .toast.error { border-color: rgba(255,68,68,0.4); color: var(--red); }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── MOBILE BOTTOM NAV ── */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #0A0A0F;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 0 14px;
+      z-index: 200;
+    }
+    .bottom-nav-inner { display: flex; justify-content: space-around; }
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .bn-item.active { color: var(--cyan); }
+    .bn-icon { font-size: 20px; line-height: 1; }
+
+    @media (max-width: 1024px) {
+      .events-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px 16px 90px; }
+      .page-title { font-size: 36px; margin-bottom: 20px; }
+      .events-grid { grid-template-columns: 1fr; }
+      .bottom-nav { display: block; }
+      .fab { bottom: 80px; right: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">The Garage</div>
+    <a href="index.html" class="nav-link">🏠 Dashboard</a>
+    <a href="collection.html" class="nav-link">🚗 Collection</a>
+    <a href="rally.html" class="nav-link">
+      <span class="rally-dot"></span> Rally
+    </a>
+    <a href="events.html" class="nav-link active">📅 Events</a>
+    <a href="market.html" class="nav-link">🛒 Market</a>
+    <a href="analytics.html" class="nav-link">📊 Analytics</a>
+    <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
+    <a href="vault.html" class="nav-link">🔒 Vault</a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <h1 class="page-title">
+      <span class="solid">EVENTS </span><span class="outline">CALENDAR</span>
+    </h1>
+
+    <div class="events-grid" id="events-grid">
+      <div class="empty-state" id="loading-state">Loading...</div>
+    </div>
+  </main>
+
+  <!-- FAB -->
+  <button class="fab" id="fab-create" title="Create Event">+</button>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a href="index.html" class="bn-item"><span class="bn-icon">🏠</span>Home</a>
+      <a href="collection.html" class="bn-item"><span class="bn-icon">🚗</span>Cars</a>
+      <a href="rally.html" class="bn-item"><span class="bn-icon">📍</span>Rally</a>
+      <a href="events.html" class="bn-item active"><span class="bn-icon">📅</span>Events</a>
+      <a href="market.html" class="bn-item"><span class="bn-icon">🛒</span>Market</a>
+    </div>
+  </nav>
+
+  <!-- CREATE EVENT MODAL -->
+  <div class="modal-overlay" id="create-modal">
+    <div class="modal">
+      <div class="modal-title">Create Event</div>
+      <div class="form-group">
+        <label class="form-label">Event Title</label>
+        <input class="form-input" id="ev-title" type="text" placeholder="Saturday Morning Cruise...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select class="form-select" id="ev-type">
+          <option value="Meet">Meet</option>
+          <option value="Rally">Rally</option>
+          <option value="Track Day">Track Day</option>
+          <option value="Car Show">Car Show</option>
+          <option value="Cars & Coffee">Cars &amp; Coffee</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date &amp; Time</label>
+        <input class="form-input" id="ev-datetime" type="datetime-local">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="ev-location" type="text" placeholder="Willow Springs Raceway...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="ev-desc" placeholder="Tell people what to expect..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Your Name</label>
+        <input class="form-input" id="ev-owner-name" type="text" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Your Car</label>
+        <input class="form-input" id="ev-owner-car" type="text" placeholder="e.g. Porsche 911 GT3">
+      </div>
+      <button class="btn-submit" id="btn-create-event">CREATE EVENT</button>
+      <button class="btn-cancel" id="btn-cancel-create">Cancel</button>
+    </div>
+  </div>
+
+  <!-- NAME PROMPT MODAL -->
+  <div class="name-prompt-overlay" id="name-prompt-modal">
+    <div class="modal">
+      <div class="modal-title">Quick Intro</div>
+      <p style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:20px;">We just need your name and car before you RSVP.</p>
+      <div class="form-group">
+        <label class="form-label">Your Name</label>
+        <input class="form-input" id="prompt-name" type="text" placeholder="First name or handle">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Your Car</label>
+        <input class="form-input" id="prompt-car-make" type="text" placeholder="Make (e.g. Porsche)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Model</label>
+        <input class="form-input" id="prompt-car-model" type="text" placeholder="Model (e.g. 911 GT3)">
+      </div>
+      <button class="btn-submit" id="btn-prompt-confirm">CONFIRM &amp; RSVP</button>
+      <button class="btn-cancel" id="btn-prompt-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    const { createClient } = supabase
+    const db = createClient(
+      'https://mjmuqhridetyqrytouhe.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qbXVxaHJpZGV0eXFyeXRvdWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTYxNDQsImV4cCI6MjA5MDU5MjE0NH0.QURk9RdMTpXGcVwjcVGG9XQ5xKktPlYa3L9PBmyoYpw'
+    )
+
+    // ── Utilities ──────────────────────────────────────────
+    function esc(str) {
+      return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+
+    function timeAgo(dateStr) {
+      const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+      if (diff < 60) return 'just now'
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago'
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago'
+      return Math.floor(diff/86400) + 'd ago'
+    }
+
+    function formatEventDate(dateStr) {
+      const d = new Date(dateStr)
+      return d.toLocaleString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      }).replace(',', ' ·')
+    }
+
+    function typeBadgeClass(type) {
+      const map = {
+        'Meet': 'badge-cyan',
+        'Rally': 'badge-green',
+        'Track Day': 'badge-amber',
+        'Car Show': 'badge-red',
+        'Cars & Coffee': 'badge-amber'
+      }
+      return map[type] || 'badge-cyan'
+    }
+
+    function showToast(msg, isError = false) {
+      const container = document.getElementById('toast-container')
+      const t = document.createElement('div')
+      t.className = 'toast' + (isError ? ' error' : '')
+      t.textContent = msg
+      container.appendChild(t)
+      setTimeout(() => t.remove(), 3500)
+    }
+
+    // ── State ──────────────────────────────────────────────
+    let eventsData = []
+    let rsvpCounts = {}    // eventId → count
+    let rsvpMembers = {}   // eventId → array
+    let pendingRsvpEventId = null
+
+    function getOwnerName() { return localStorage.getItem('garage_owner_name') || '' }
+    function getOwnerMake() { return localStorage.getItem('garage_make') || '' }
+    function getOwnerModel() { return localStorage.getItem('garage_model') || '' }
+    function saveOwner(name, make, model) {
+      localStorage.setItem('garage_owner_name', name)
+      localStorage.setItem('garage_make', make)
+      localStorage.setItem('garage_model', model)
+    }
+
+    function hasRsvpd(eventId) {
+      const rsvpd = JSON.parse(localStorage.getItem('garage_rsvpd') || '[]')
+      return rsvpd.includes(String(eventId))
+    }
+    function markRsvpd(eventId) {
+      const rsvpd = JSON.parse(localStorage.getItem('garage_rsvpd') || '[]')
+      if (!rsvpd.includes(String(eventId))) rsvpd.push(String(eventId))
+      localStorage.setItem('garage_rsvpd', JSON.stringify(rsvpd))
+    }
+
+    // ── Load Events ────────────────────────────────────────
+    async function loadEvents() {
+      const grid = document.getElementById('events-grid')
+
+      const { data: events, error } = await db
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: true })
+
+      if (error) {
+        grid.innerHTML = '<div class="empty-state">Failed to load events.</div>'
+        return
+      }
+
+      if (!events || events.length === 0) {
+        grid.innerHTML = '<div class="empty-state">NO EVENTS YET. CREATE THE FIRST ONE.</div>'
+        return
+      }
+
+      eventsData = events
+
+      // Load RSVP counts in parallel
+      const rsvpPromises = events.map(ev =>
+        db.from('event_rsvps').select('id, member_name, car_make, car_model', { count: 'exact' }).eq('event_id', ev.id)
+      )
+      const rsvpResults = await Promise.all(rsvpPromises)
+      rsvpResults.forEach((res, i) => {
+        const id = events[i].id
+        rsvpCounts[id] = res.count ?? 0
+        rsvpMembers[id] = res.data ?? []
+      })
+
+      renderGrid()
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('events-grid')
+      if (eventsData.length === 0) {
+        grid.innerHTML = '<div class="empty-state">NO EVENTS YET. CREATE THE FIRST ONE.</div>'
+        return
+      }
+      grid.innerHTML = eventsData.map(ev => buildCard(ev)).join('')
+      attachCardListeners()
+    }
+
+    function buildCard(ev) {
+      const going = hasRsvpd(ev.id)
+      const count = rsvpCounts[ev.id] ?? 0
+      const members = rsvpMembers[ev.id] ?? []
+      const badgeClass = typeBadgeClass(ev.type)
+
+      const membersHtml = members.length > 0
+        ? members.map(m => `
+            <div class="rsvp-member">
+              <div class="rsvp-avatar">${esc(m.member_name?.charAt(0) || '?').toUpperCase()}</div>
+              <div>
+                <div class="rsvp-name">${esc(m.member_name)}</div>
+                <div class="rsvp-car">${esc(m.car_make || '')} ${esc(m.car_model || '')}</div>
+              </div>
+            </div>
+          `).join('')
+        : '<div style="font-size:12px;color:rgba(255,255,255,0.25);padding:8px 0;">No RSVPs yet. Be the first!</div>'
+
+      return `
+        <div class="event-card" data-id="${esc(ev.id)}">
+          <div class="event-card-inner">
+            <span class="type-badge ${badgeClass}">${esc(ev.type)}</span>
+            <div class="event-title">${esc(ev.title)}</div>
+            <div class="event-meta">
+              <div class="event-meta-row">🗓️ ${esc(formatEventDate(ev.event_date))}</div>
+              <div class="event-meta-row">📍 ${esc(ev.location)}</div>
+            </div>
+            <div class="event-rsvp-count">${count} car${count === 1 ? '' : 's'} going</div>
+            <button class="btn-rsvp ${going ? 'going' : ''}" data-event-id="${esc(ev.id)}">
+              ${going ? '✓ YOU\'RE IN' : 'I\'M GOING'}
+            </button>
+          </div>
+          <div class="event-details" id="details-${esc(ev.id)}">
+            <div class="event-desc">${esc(ev.description || 'No description provided.')}</div>
+            <div class="rsvp-list-title">Who's going (${count})</div>
+            <div id="rsvp-list-${esc(ev.id)}">${membersHtml}</div>
+            <button class="btn-share" data-event-id="${esc(ev.id)}">📤 Share</button>
+          </div>
+        </div>
+      `
+    }
+
+    function attachCardListeners() {
+      // Toggle card expand
+      document.querySelectorAll('.event-card-inner').forEach(inner => {
+        inner.addEventListener('click', (e) => {
+          if (e.target.classList.contains('btn-rsvp')) return
+          const card = inner.closest('.event-card')
+          const id = card.dataset.id
+          const details = document.getElementById('details-' + id)
+          details.classList.toggle('open')
+        })
+      })
+
+      // RSVP buttons
+      document.querySelectorAll('.btn-rsvp').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          handleRsvp(btn.dataset.eventId)
+        })
+      })
+
+      // Share buttons
+      document.querySelectorAll('.btn-share').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          handleShare(btn.dataset.eventId)
+        })
+      })
+    }
+
+    // ── RSVP Flow ──────────────────────────────────────────
+    async function handleRsvp(eventId) {
+      if (hasRsvpd(eventId)) return
+
+      const name = getOwnerName()
+      if (!name) {
+        pendingRsvpEventId = eventId
+        document.getElementById('name-prompt-modal').classList.add('open')
+        return
+      }
+      await submitRsvp(eventId, name, getOwnerMake(), getOwnerModel())
+    }
+
+    async function submitRsvp(eventId, memberName, carMake, carModel) {
+      const { error } = await db.from('event_rsvps').insert({
+        event_id: eventId,
+        member_name: memberName,
+        car_make: carMake,
+        car_model: carModel
+      })
+      if (error) {
+        showToast('RSVP failed. Try again.', true)
+        return
+      }
+      markRsvpd(eventId)
+      rsvpCounts[eventId] = (rsvpCounts[eventId] ?? 0) + 1
+      rsvpMembers[eventId] = rsvpMembers[eventId] ?? []
+      rsvpMembers[eventId].push({ member_name: memberName, car_make: carMake, car_model: carModel })
+      updateCardRsvpUI(eventId)
+      showToast("You're in! See you there.")
+    }
+
+    function updateCardRsvpUI(eventId) {
+      const count = rsvpCounts[eventId]
+      const card = document.querySelector(`.event-card[data-id="${eventId}"]`)
+      if (!card) return
+
+      const btn = card.querySelector('.btn-rsvp')
+      if (btn) { btn.classList.add('going'); btn.textContent = "✓ YOU'RE IN" }
+
+      const countEl = card.querySelector('.event-rsvp-count')
+      if (countEl) countEl.textContent = `${count} car${count === 1 ? '' : 's'} going`
+
+      const members = rsvpMembers[eventId] ?? []
+      const listEl = document.getElementById('rsvp-list-' + eventId)
+      if (listEl) {
+        listEl.innerHTML = members.map(m => `
+          <div class="rsvp-member">
+            <div class="rsvp-avatar">${esc(m.member_name?.charAt(0) || '?').toUpperCase()}</div>
+            <div>
+              <div class="rsvp-name">${esc(m.member_name)}</div>
+              <div class="rsvp-car">${esc(m.car_make || '')} ${esc(m.car_model || '')}</div>
+            </div>
+          </div>
+        `).join('')
+      }
+
+      const titleEl = card.querySelector('.rsvp-list-title')
+      if (titleEl) titleEl.textContent = `Who's going (${count})`
+    }
+
+    // Name prompt confirm
+    document.getElementById('btn-prompt-confirm').addEventListener('click', async () => {
+      const name = document.getElementById('prompt-name').value.trim()
+      const make = document.getElementById('prompt-car-make').value.trim()
+      const model = document.getElementById('prompt-car-model').value.trim()
+      if (!name) { showToast('Please enter your name.', true); return }
+      saveOwner(name, make, model)
+      document.getElementById('name-prompt-modal').classList.remove('open')
+      if (pendingRsvpEventId) {
+        await submitRsvp(pendingRsvpEventId, name, make, model)
+        pendingRsvpEventId = null
+      }
+    })
+    document.getElementById('btn-prompt-cancel').addEventListener('click', () => {
+      document.getElementById('name-prompt-modal').classList.remove('open')
+      pendingRsvpEventId = null
+    })
+
+    // ── Share ──────────────────────────────────────────────
+    function handleShare(eventId) {
+      const ev = eventsData.find(e => String(e.id) === String(eventId))
+      const shareUrl = window.location.href.split('?')[0] + '?event=' + eventId
+      const shareText = ev ? `Join us at "${ev.title}" — ${formatEventDate(ev.event_date)} · ${ev.location}` : 'Check out this event!'
+      if (navigator.share) {
+        navigator.share({ title: ev?.title || 'Garage Event', text: shareText, url: shareUrl }).catch(() => {})
+      } else {
+        navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied to clipboard!')).catch(() => showToast('Could not copy link.', true))
+      }
+    }
+
+    // ── Create Event ───────────────────────────────────────
+    document.getElementById('fab-create').addEventListener('click', () => {
+      const modal = document.getElementById('create-modal')
+      document.getElementById('ev-owner-name').value = getOwnerName()
+      document.getElementById('ev-owner-car').value = [getOwnerMake(), getOwnerModel()].filter(Boolean).join(' ')
+      modal.classList.add('open')
+    })
+    document.getElementById('btn-cancel-create').addEventListener('click', () => {
+      document.getElementById('create-modal').classList.remove('open')
+    })
+    document.getElementById('create-modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('create-modal')) {
+        document.getElementById('create-modal').classList.remove('open')
+      }
+    })
+
+    document.getElementById('btn-create-event').addEventListener('click', async () => {
+      const title    = document.getElementById('ev-title').value.trim()
+      const type     = document.getElementById('ev-type').value
+      const datetime = document.getElementById('ev-datetime').value
+      const location = document.getElementById('ev-location').value.trim()
+      const desc     = document.getElementById('ev-desc').value.trim()
+      const ownerName = document.getElementById('ev-owner-name').value.trim()
+      const ownerCar  = document.getElementById('ev-owner-car').value.trim()
+
+      if (!title || !datetime || !location) {
+        showToast('Please fill in title, date/time, and location.', true)
+        return
+      }
+
+      const btn = document.getElementById('btn-create-event')
+      btn.disabled = true
+      btn.textContent = 'CREATING...'
+
+      const { data, error } = await db.from('events').insert({
+        title, type,
+        event_date: new Date(datetime).toISOString(),
+        location,
+        description: desc,
+        created_by: ownerName || 'Anonymous'
+      }).select().single()
+
+      btn.disabled = false
+      btn.textContent = 'CREATE EVENT'
+
+      if (error) {
+        showToast('Failed to create event. ' + (error.message || ''), true)
+        return
+      }
+
+      if (ownerName) {
+        const [carMake, ...carModelParts] = ownerCar.split(' ')
+        saveOwner(ownerName, carMake || '', carModelParts.join(' ') || '')
+      }
+
+      document.getElementById('create-modal').classList.remove('open')
+      // Clear form
+      ;['ev-title','ev-location','ev-desc','ev-owner-name','ev-owner-car','ev-datetime'].forEach(id => {
+        document.getElementById(id).value = ''
+      })
+      showToast('Event created!')
+    })
+
+    // ── Realtime ───────────────────────────────────────────
+    db.channel('events-inserts')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, async (payload) => {
+        const newEv = payload.new
+        rsvpCounts[newEv.id] = 0
+        rsvpMembers[newEv.id] = []
+        eventsData.push(newEv)
+        eventsData.sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+        renderGrid()
+      })
+      .subscribe()
+
+    // ── Init ───────────────────────────────────────────────
+    loadEvents()
+  </script>
+</body>
+</html>
