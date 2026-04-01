@@ -1958,7 +1958,7 @@ document.getElementById('create-submit-btn').addEventListener('click', async () 
     }
 
     // Insert rally
-    const { error: rallyErr } = await db.from('rallies').insert({
+    const { error: rallyErr } = await db.from('rally_sessions').insert({
       id: rallyId,
       name: rallyNameVal,
       created_by_session: sessionId,
@@ -2054,11 +2054,11 @@ document.getElementById('join-submit-btn').addEventListener('click', async () =>
     let rallyName = 'Active Rally';
     if (!rallyId) {
       // Try to find most recent active rally
-      const { data: rallyData } = await db.from('rallies').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const { data: rallyData } = await db.from('rally_sessions').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (rallyData) { rallyId = rallyData.id; rallyName = rallyData.name; }
       else { rallyId = crypto.randomUUID(); }
     } else {
-      const { data: rallyData } = await db.from('rallies').select('name').eq('id', rallyId).maybeSingle();
+      const { data: rallyData } = await db.from('rally_sessions').select('name').eq('id', rallyId).maybeSingle();
       if (rallyData) rallyName = rallyData.name;
     }
 
@@ -2226,7 +2226,7 @@ async function preloadFromUrl() {
       allParticipants = data;
       data.forEach(p => addOrUpdateMarker(p));
       renderPhotoGrid(data);
-      const { data: rallyData } = await db.from('rallies').select('name').eq('id', urlRallyId).maybeSingle();
+      const { data: rallyData } = await db.from('rally_sessions').select('name').eq('id', urlRallyId).maybeSingle();
       if (rallyData) updatePanelRallyName(rallyData.name);
       loadActiveRoute(urlRallyId);
     }
