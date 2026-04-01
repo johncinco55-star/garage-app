@@ -984,6 +984,79 @@
       .marker-circle.leader-size { width: 62px; height: 62px; }
       .cta-btn, .modal-submit { min-height: 48px; }
       .chat-input-bar { padding-bottom: 8px; }
+
+      /* ── MOBILE PANEL FIX ── */
+      .right-panel {
+        display: flex; flex-direction: column;
+        overflow: hidden;
+      }
+      .panel-scroll {
+        flex: 1; display: flex; flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* Participants: horizontal scroll row, fixed 100px */
+      .photo-grid-section {
+        flex: 0 0 100px !important; max-height: 100px;
+        overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .photo-grid {
+        display: flex !important; flex-direction: row !important;
+        overflow-x: auto !important; overflow-y: hidden !important;
+        gap: 8px; padding: 6px 12px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .photo-card {
+        flex: 0 0 70px !important; width: 70px !important;
+        min-width: 70px; padding: 6px 4px !important;
+      }
+      .photo-card img, .photo-card .initial-avatar {
+        width: 44px !important; height: 44px !important;
+      }
+      .photo-card .pc-name {
+        max-width: 64px; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap;
+        font-size: 9px !important;
+      }
+      .photo-card .pc-car { font-size: 8px !important; }
+      .photo-card .pc-speed { font-size: 8px !important; }
+
+      /* Saved routes: collapsed 40px, expandable */
+      .saved-routes {
+        flex: 0 0 auto !important; max-height: 40px;
+        overflow: hidden; transition: max-height 0.3s ease;
+        padding: 10px 16px !important;
+      }
+      .saved-routes.expanded { max-height: 300px; overflow-y: auto; }
+      .saved-routes-title {
+        cursor: pointer; display: flex; align-items: center;
+        justify-content: space-between;
+      }
+      .saved-routes-title::after {
+        content: '▼'; font-size: 10px; color: rgba(255,255,255,0.3);
+        transition: transform 0.3s;
+      }
+      .saved-routes.expanded .saved-routes-title::after {
+        transform: rotate(180deg);
+      }
+
+      /* Chat: fills remaining space */
+      .chat-section {
+        flex: 1 1 0 !important; min-height: 150px !important;
+        display: flex !important; flex-direction: column !important;
+        overflow: hidden !important;
+      }
+      .chat-messages {
+        flex: 1; overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .chat-input-bar {
+        flex: 0 0 auto; position: relative !important;
+      }
+
+      /* Join section compact */
+      .join-section { padding: 12px !important; }
+      .join-heading { font-size: 13px !important; margin-bottom: 8px !important; }
     }
   </style>
 </head>
@@ -1099,7 +1172,7 @@
 
       <!-- Saved Routes (leader only) -->
       <div id="saved-routes-section" class="saved-routes">
-        <div class="saved-routes-title">Saved Routes</div>
+        <div class="saved-routes-title"><span>📍 Saved Routes <span id="saved-routes-count"></span></span></div>
         <div id="saved-routes-list"></div>
       </div>
 
@@ -1636,6 +1709,8 @@ async function loadSavedRoutes() {
   if (!container) return;
   try {
     const { data } = await db.from('rally_routes').select('*').order('created_at', { ascending: false });
+    const countEl = document.getElementById('saved-routes-count');
+    if (countEl) countEl.textContent = data ? `(${data.length})` : '';
     if (!data || !data.length) { container.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:11px;padding:8px 0;">No saved routes yet</div>'; return; }
     container.innerHTML = data.map(r => `
       <div class="saved-route-item ${r.is_active ? 'active' : ''}" data-id="${r.id}">
@@ -1832,7 +1907,7 @@ function addOrUpdateMarker(p) {
 
   const { el, arrowEl } = makeMarkerEl(p);
 
-  const popup = new mapboxgl.Popup({ offset: 25, closeButton: false, maxWidth: '220px' })
+  const popup = new mapboxgl.Popup({ offset: 25, closeButton: true, closeOnClick: true, maxWidth: '200px' })
     .setHTML(makePopupHtml(p));
 
   const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
@@ -1860,8 +1935,8 @@ function makePopupHtml(p) {
   const spd = typeof p.speed === 'number' ? p.speed : 0;
   const lastSeen = p.last_seen ? timeAgo(p.last_seen) : '—';
   const photoHtml = photoSrc
-    ? `<img class="popup-photo" src="${photoSrc}" alt="${nameEsc}" onerror="this.src='${generateInitialAvatar(p.owner_name, p.color)}';" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ${color};">`
-    : `<div style="width:56px;height:56px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;">${(nameEsc.charAt(0)||'?').toUpperCase()}</div>`;
+    ? `<img class="popup-photo" src="${photoSrc}" alt="${nameEsc}" onerror="this.src='${generateInitialAvatar(p.owner_name, p.color)}';" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${color};">`
+    : `<div style="width:40px;height:40px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;">${(nameEsc.charAt(0)||'?').toUpperCase()}</div>`;
   return `<div class="popup-header">${photoHtml}<div class="popup-info"><div class="popup-name">${nameEsc}</div><div class="popup-car">${makeEsc} ${modelEsc}</div></div></div><div class="popup-stats"><div class="popup-stat"><div class="popup-stat-val">${spd}</div><div class="popup-stat-label">mph</div></div><div class="popup-stat"><div class="popup-stat-val" style="font-size:11px;">${esc(lastSeen)}</div><div class="popup-stat-label">last seen</div></div></div>`;
 }
 
@@ -2822,6 +2897,20 @@ if (origLeaveCleanup) {
 
 // If already joined on load, show hazard bar
 if (state.joined) { showHazardBar(); loadHazards(); }
+
+// Mobile: toggle saved routes collapse/expand
+document.querySelectorAll('.saved-routes-title').forEach(title => {
+  title.addEventListener('click', () => {
+    const section = title.closest('.saved-routes');
+    if (section) section.classList.toggle('expanded');
+  });
+});
+
+// Close popups on map click
+map.on('click', (e) => {
+  // Only close if not in hazard drop mode
+  if (typeof hazardDropType !== 'undefined' && hazardDropType) return;
+});
 
 </script>
 </body>
