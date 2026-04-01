@@ -824,6 +824,23 @@
     .bottom-nav-item.active { color: var(--cyan); }
     .bottom-nav-item span:first-child { font-size: 20px; }
 
+    /* ───── SAVED ROUTES (leader only) ───── */
+    .saved-routes { display: none; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .saved-routes.visible { display: block; }
+    .saved-routes-title { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .saved-route-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; margin-bottom: 6px; }
+    .saved-route-item.active { border-color: rgba(0,200,255,0.3); background: rgba(0,200,255,0.06); }
+    .saved-route-info { flex: 1; min-width: 0; }
+    .saved-route-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .saved-route-desc { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .saved-route-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .sr-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+    .sr-btn:hover { background: rgba(255,255,255,0.1); }
+    .sr-activate { color: var(--cyan); border-color: rgba(0,200,255,0.2); }
+    .sr-activate:hover { background: rgba(0,200,255,0.15); }
+    .sr-delete { color: var(--red); border-color: rgba(255,68,68,0.2); }
+    .sr-delete:hover { background: rgba(255,68,68,0.15); }
+
     /* ───── HAZARD BAR ───── */
     .hazard-bar {
       position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -981,6 +998,12 @@
       <div id="photo-grid-section" class="photo-grid-section" style="display:none">
         <div class="section-label">Participants</div>
         <div id="photo-grid" class="photo-grid"></div>
+      </div>
+
+      <!-- Saved Routes (leader only) -->
+      <div id="saved-routes-section" class="saved-routes">
+        <div class="saved-routes-title">Saved Routes</div>
+        <div id="saved-routes-list"></div>
       </div>
 
       <!-- Chat -->
@@ -1434,20 +1457,28 @@ function clearRoute() {
 }
 
 async function saveRoute() {
-  if (!currentRoute || !state.rallyId) { showToast('Get a route first', 'error'); return; }
-  const routeName = document.getElementById('origin-input').value + ' → ' + document.getElementById('dest-input').value;
+  if (!currentRoute) { showToast('Get a route first', 'error'); return; }
+  // Prompt for route name
+  const defaultName = document.getElementById('origin-input').value + ' → ' + document.getElementById('dest-input').value;
+  const routeName = prompt('Name this route:', defaultName);
+  if (!routeName) return;
   const coords = currentRoute.geometry.coordinates;
+  const miles = (currentRoute.distance / 1609.34).toFixed(1);
+  const mins = Math.round(currentRoute.duration / 60);
+  const desc = `${miles} mi · ${mins} min`;
   try {
-    const { error } = await db.from('rally_routes').upsert({
-      rally_id: state.rallyId,
+    // Deactivate all other routes first
+    await db.from('rally_routes').update({ is_active: false }).eq('is_active', true);
+    // Insert new active route (columns: name, description, waypoints, is_active)
+    const { error } = await db.from('rally_routes').insert({
       name: routeName,
-      coordinates: JSON.stringify(coords),
-      distance_miles: parseFloat((currentRoute.distance / 1609.34).toFixed(2)),
-      duration_minutes: Math.round(currentRoute.duration / 60),
+      description: desc,
+      waypoints: coords,
       is_active: true
-    }, { onConflict: 'rally_id' });
+    });
     if (error) throw error;
-    showToast('Route saved!', 'success');
+    showToast('Route saved & live for all!', 'success');
+    loadSavedRoutes();
   } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
 }
 
@@ -1456,15 +1487,56 @@ document.getElementById('save-route-btn').addEventListener('click', saveRoute);
 document.getElementById('clear-route-btn').addEventListener('click', clearRoute);
 
 /* ═══════════════════════════════════════════════
+   SAVED ROUTES LIST (leader only)
+═══════════════════════════════════════════════ */
+async function loadSavedRoutes() {
+  const container = document.getElementById('saved-routes-list');
+  if (!container) return;
+  try {
+    const { data } = await db.from('rally_routes').select('*').order('created_at', { ascending: false });
+    if (!data || !data.length) { container.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:11px;padding:8px 0;">No saved routes yet</div>'; return; }
+    container.innerHTML = data.map(r => `
+      <div class="saved-route-item ${r.is_active ? 'active' : ''}" data-id="${r.id}">
+        <div class="saved-route-info">
+          <div class="saved-route-name">${esc(r.name)}</div>
+          <div class="saved-route-desc">${r.description ? esc(r.description) : ''} ${r.is_active ? '<span style="color:var(--green);font-weight:600;">● LIVE</span>' : ''}</div>
+        </div>
+        <div class="saved-route-actions">
+          ${r.is_active ? '' : `<button class="sr-btn sr-activate" onclick="activateRoute('${r.id}')">▶</button>`}
+          <button class="sr-btn sr-delete" onclick="deleteRoute('${r.id}')">✕</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { console.warn('Load routes error:', e); }
+}
+
+async function activateRoute(routeId) {
+  try {
+    await db.from('rally_routes').update({ is_active: false }).eq('is_active', true);
+    await db.from('rally_routes').update({ is_active: true }).eq('id', routeId);
+    showToast('Route activated for all!', 'success');
+    loadSavedRoutes();
+  } catch (e) { showToast('Activate failed', 'error'); }
+}
+
+async function deleteRoute(routeId) {
+  if (!confirm('Delete this route?')) return;
+  try {
+    await db.from('rally_routes').delete().eq('id', routeId);
+    showToast('Route deleted', 'success');
+    loadSavedRoutes();
+  } catch (e) { showToast('Delete failed', 'error'); }
+}
+
+/* ═══════════════════════════════════════════════
    LOAD ACTIVE ROUTE
 ═══════════════════════════════════════════════ */
-async function loadActiveRoute(rallyId) {
+async function loadActiveRoute() {
   try {
-    const query = db.from('rally_routes').select('*').eq('is_active', true);
-    if (rallyId) query.eq('rally_id', rallyId);
-    const { data } = await query.order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    const { data } = await db.from('rally_routes').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (!data) return;
-    const coords = typeof data.coordinates === 'string' ? JSON.parse(data.coordinates) : data.coordinates;
+    // waypoints is JSONB — may be array already or stringified
+    const coords = typeof data.waypoints === 'string' ? JSON.parse(data.waypoints) : data.waypoints;
     if (coords && coords.length) {
       map.isStyleLoaded() ? drawRoute(coords) : map.once('load', () => drawRoute(coords));
     }
@@ -1945,18 +2017,18 @@ function subscribeRealtime(rallyId) {
     })
     .subscribe();
 
-  // Routes
+  // Routes — listen for INSERT and UPDATE (columns: id, name, description, waypoints, is_active, created_at)
   const routeCh = db.channel(`rally-routes-${rallyId}`)
     .on('postgres_changes', {
-      event: 'UPDATE', schema: 'public', table: 'rally_routes',
-      filter: rallyId ? `rally_id=eq.${rallyId}` : undefined
+      event: '*', schema: 'public', table: 'rally_routes'
     }, (payload) => {
       const r = payload.new;
       if (r && r.is_active) {
-        const coords = typeof r.coordinates === 'string' ? JSON.parse(r.coordinates) : r.coordinates;
+        const coords = typeof r.waypoints === 'string' ? JSON.parse(r.waypoints) : r.waypoints;
         if (coords && coords.length) drawRoute(coords);
         if (r.name) updatePanelRallyName(r.name);
       }
+      loadSavedRoutes(); // refresh the list for leader
     })
     .subscribe();
 
@@ -2038,6 +2110,8 @@ document.getElementById('create-submit-btn').addEventListener('click', async () 
     updatePanelRallyName(rallyNameVal);
     showLiveUI(rallyNameVal);
     document.getElementById('route-planner').classList.add('visible');
+    document.getElementById('saved-routes-section').classList.add('visible');
+    loadSavedRoutes();
     showShareSection(rallyId);
 
     map.flyTo({ center: [pos.lng, pos.lat], zoom: 13, duration: 1500 });
@@ -2232,6 +2306,8 @@ async function restoreSession() {
 
     if (role === 'leader') {
       document.getElementById('route-planner').classList.add('visible');
+      document.getElementById('saved-routes-section').classList.add('visible');
+      loadSavedRoutes();
       showShareSection(state.rallyId);
     }
 
