@@ -91,8 +91,9 @@
       margin-left: var(--sidebar-w);
     }
 
-    /* ───── MAP ───── */
-    #map { flex: 0 0 65%; height: 100vh; position: relative; }
+    /* ───── MAP WRAPPER ───── */
+    .map-wrap { flex: 0 0 65%; position: relative; height: 100vh; }
+    #map { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; }
 
     /* ───── ROUTE PLANNER ───── */
     #route-planner {
@@ -103,10 +104,10 @@
       transform: translateX(-50%);
       width: 420px;
       max-width: 90vw;
-      background: rgba(0,0,0,0.45);
+      background: rgba(0,0,0,0.5);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
       padding: 14px 16px;
       z-index: 50;
@@ -190,7 +191,7 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
-      background: rgba(10,10,15,0.75);
+      background: rgba(10,10,15,0.82);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-left: 1px solid rgba(0,200,255,0.1);
@@ -550,7 +551,7 @@
     }
     .modal-overlay.open { display: flex !important; }
     .modal-box {
-      background: rgba(10,10,15,0.85);
+      background: rgba(10,10,15,0.88);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(0,200,255,0.2);
@@ -848,7 +849,7 @@
     /* ───── NAVIGATION MODE ───── */
     .nav-bar {
       position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px; padding: 14px 20px; z-index: 100;
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       display: none; flex-direction: column; align-items: center; gap: 6px;
@@ -931,7 +932,7 @@
     .hazard-bar {
       position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
       display: none; gap: 6px; z-index: 80;
-      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.08);
       border-radius: 50px; padding: 8px 16px;
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     }
@@ -961,11 +962,8 @@
         height: 100dvh;
         padding-bottom: 60px;
       }
-      #map {
-        flex: none;
-        height: 55dvh;
-        width: 100%;
-      }
+      .map-wrap { flex: none; height: 55dvh; width: 100%; }
+      /* #map fills its parent via the absolute positioning above */
       .right-panel {
         flex: none;
         height: 45dvh;
@@ -1011,7 +1009,8 @@
 <div class="app-layout">
 
   <!-- MAP -->
-  <div id="map">
+  <div class="map-wrap">
+    <div id="map"></div>
     <!-- ROUTE PLANNER (leader only) -->
     <div id="route-planner">
       <div class="planner-label">📍 Route Planner</div>
@@ -1249,10 +1248,29 @@ mapboxgl.accessToken = _mb.join('');
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/dark-v11',
-  center: [-87.6298, 41.8781],
-  zoom: 9
+  center: [0, 20],
+  zoom: 2
 });
 map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-left');
+
+map.on('load', () => {
+  map.resize();
+});
+setTimeout(() => map.resize(), 100);
+setTimeout(() => map.resize(), 500);
+setTimeout(() => map.resize(), 1000);
+window.addEventListener('resize', () => map.resize());
+
+// Fly to user's GPS position on load
+navigator.geolocation.getCurrentPosition(
+  (pos) => {
+    map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 10, duration: 1500 });
+  },
+  () => {
+    // GPS denied — stay at world view, user can search
+  },
+  { enableHighAccuracy: true, timeout: 5000 }
+);
 
 /* ═══════════════════════════════════════════════
    STATE
@@ -1273,7 +1291,7 @@ let state = {
   myName: '',
   myMake: '',
   myModel: '',
-  myColor: '#FFFFFF',
+  myColor: '#00C8FF',
   myPhotoUrl: '',
   myRole: '',
   rallyId: null,
@@ -1349,8 +1367,8 @@ function buildSwatches(containerId, stateKey) {
   });
 }
 
-let createSelectedColor = '#FFFFFF';
-let joinSelectedColor = '#FFFFFF';
+let createSelectedColor = '#00C8FF';
+let joinSelectedColor = '#00C8FF';
 
 buildSwatches('c-swatches', 'create');
 buildSwatches('j-swatches', 'join');
@@ -1461,7 +1479,7 @@ function bindGeocode(inputId, dropdownId, onSelect) {
     geocodeTimers[inputId] = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?country=US&limit=5&access_token=${mapboxgl.accessToken}`
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?country=US&limit=5&autocomplete=true&types=place,address,poi&entrances=true&access_token=${mapboxgl.accessToken}`
         );
         const data = await res.json();
         dropdown.innerHTML = '';
@@ -1560,10 +1578,18 @@ function clearRoute() {
   document.getElementById('route-badge').style.display = 'none';
 }
 
+function extractShortName(fullAddress) {
+  if (!fullAddress) return 'Unknown';
+  const parts = fullAddress.split(',').map(p => p.trim());
+  return parts.length >= 2 ? parts[1] : parts[0];
+}
+
 async function saveRoute() {
   if (!currentRoute) { showToast('Get a route first', 'error'); return; }
-  // Prompt for route name
-  const defaultName = document.getElementById('origin-input').value + ' → ' + document.getElementById('dest-input').value;
+  // Prompt for route name using short city names
+  const fromShort = extractShortName(document.getElementById('origin-input').value || (selectedOrigin && selectedOrigin.name) || '');
+  const toShort = extractShortName(document.getElementById('dest-input').value || (selectedDest && selectedDest.name) || '');
+  const defaultName = `${fromShort} → ${toShort}`;
   const routeName = prompt('Name this route:', defaultName);
   if (!routeName) return;
   const coords = currentRoute.geometry.coordinates;
@@ -2129,7 +2155,7 @@ function subscribeRealtime(rallyId) {
       event: 'INSERT', schema: 'public', table: 'rally_message_reactions'
     }, (payload) => {
       const r = payload.new;
-      if (r && r.message_id && r.emoji) updateReactionCount(String(r.message_id), r.emoji);
+      if (r && r.message_id && r.reaction) updateReactionCount(String(r.message_id), r.reaction);
     })
     .subscribe();
 
@@ -2174,10 +2200,11 @@ document.getElementById('create-submit-btn').addEventListener('click', async () 
   try {
     const sessionId = crypto.randomUUID();
     const rallyId = crypto.randomUUID();
+    const color = createSelectedColor || '#00C8FF';
     let photoUrl = createPhotoUrl || '';
 
     if (!photoUrl) {
-      photoUrl = generateInitialAvatar(nameVal, createSelectedColor);
+      photoUrl = generateInitialAvatar(nameVal, color);
     }
 
     // Insert rally
@@ -2205,7 +2232,7 @@ document.getElementById('create-submit-btn').addEventListener('click', async () 
       owner_name: nameVal,
       make: makeVal || '',
       model: modelVal || '',
-      color: createSelectedColor,
+      color: color,
       photo_url: photoUrl,
       role: 'leader',
       lat: pos.lat,
@@ -2219,7 +2246,7 @@ document.getElementById('create-submit-btn').addEventListener('click', async () 
     if (pErr) throw pErr;
 
     // Save to state & localStorage
-    state = { ...state, joined: true, myId: pData.id, myName: nameVal, myMake: makeVal, myModel: modelVal, myColor: createSelectedColor, myPhotoUrl: photoUrl, myRole: 'leader', rallyId, rallyName: rallyNameVal, sessionId };
+    state = { ...state, joined: true, myId: pData.id, myName: nameVal, myMake: makeVal, myModel: modelVal, myColor: color, myPhotoUrl: photoUrl, myRole: 'leader', rallyId, rallyName: rallyNameVal, sessionId };
     persistSession();
 
     closeModal('create-modal');
@@ -2271,8 +2298,9 @@ document.getElementById('join-submit-btn').addEventListener('click', async () =>
 
   try {
     const sessionId = crypto.randomUUID();
+    const color = joinSelectedColor || '#00C8FF';
     let photoUrl = joinPhotoUrl || '';
-    if (!photoUrl) photoUrl = generateInitialAvatar(nameVal, joinSelectedColor);
+    if (!photoUrl) photoUrl = generateInitialAvatar(nameVal, color);
 
     // Determine rally ID
     let rallyId = getUrlRallyId();
@@ -2301,7 +2329,7 @@ document.getElementById('join-submit-btn').addEventListener('click', async () =>
       owner_name: nameVal,
       make: makeVal || '',
       model: modelVal || '',
-      color: joinSelectedColor,
+      color: color,
       photo_url: photoUrl,
       role: 'driver',
       lat: pos.lat,
@@ -2314,7 +2342,7 @@ document.getElementById('join-submit-btn').addEventListener('click', async () =>
 
     if (pErr) throw pErr;
 
-    state = { ...state, joined: true, myId: pData.id, myName: nameVal, myMake: makeVal, myModel: modelVal, myColor: joinSelectedColor, myPhotoUrl: photoUrl, myRole: 'driver', rallyId, rallyName, sessionId };
+    state = { ...state, joined: true, myId: pData.id, myName: nameVal, myMake: makeVal, myModel: modelVal, myColor: color, myPhotoUrl: photoUrl, myRole: 'driver', rallyId, rallyName, sessionId };
     persistSession();
 
     closeModal('join-modal');
