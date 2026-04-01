@@ -1523,7 +1523,7 @@ function animateMarker(participantId, newLng, newLat, newHeading) {
 function makeMarkerEl(p) {
   const isLeader = p.role === 'leader';
   const isOwn = p.id === state.myId;
-  const color = p.car_color || '#3388FF';
+  const color = p.color || '#3388FF';
   const size = isLeader ? 56 : 48;
 
   const wrap = document.createElement('div');
@@ -1544,8 +1544,8 @@ function makeMarkerEl(p) {
   const photoEl = document.createElement('img');
   photoEl.className = 'marker-photo';
   photoEl.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-  photoEl.src = p.photo_url || generateInitialAvatar(p.name, color);
-  photoEl.onerror = () => { photoEl.src = generateInitialAvatar(p.name, color); };
+  photoEl.src = p.photo_url || generateInitialAvatar(p.owner_name, color);
+  photoEl.onerror = () => { photoEl.src = generateInitialAvatar(p.owner_name, color); };
   circle.appendChild(photoEl);
 
   if (isOwn) {
@@ -1563,7 +1563,7 @@ function makeMarkerEl(p) {
 
   const badge = document.createElement('div');
   badge.className = 'marker-car-badge';
-  badge.textContent = p.car_make || 'Car';
+  badge.textContent = p.make || 'Car';
   wrap.appendChild(badge);
 
   return { el: wrap, arrowEl: arrow };
@@ -1577,7 +1577,7 @@ function addOrUpdateMarker(p) {
     animateMarker(p.id, p.lng, p.lat, p.heading);
     // update badge
     const badge = m.el.querySelector('.marker-car-badge');
-    if (badge) badge.textContent = p.car_make || 'Car';
+    if (badge) badge.textContent = p.make || 'Car';
     return;
   }
 
@@ -1603,15 +1603,15 @@ function addOrUpdateMarker(p) {
 }
 
 function makePopupHtml(p) {
-  const color = esc(p.car_color || '#3388FF');
+  const color = esc(p.color || '#3388FF');
   const photoSrc = esc(p.photo_url || '');
-  const nameEsc = esc(p.name || 'Driver');
-  const makeEsc = esc(p.car_make || '');
-  const modelEsc = esc(p.car_model || '');
+  const nameEsc = esc(p.owner_name || 'Driver');
+  const makeEsc = esc(p.make || '');
+  const modelEsc = esc(p.model || '');
   const spd = typeof p.speed === 'number' ? p.speed : 0;
   const lastSeen = p.last_seen ? timeAgo(p.last_seen) : '—';
   const photoHtml = photoSrc
-    ? `<img class="popup-photo" src="${photoSrc}" alt="${nameEsc}" onerror="this.src='${generateInitialAvatar(p.name, p.car_color)}';" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ${color};">`
+    ? `<img class="popup-photo" src="${photoSrc}" alt="${nameEsc}" onerror="this.src='${generateInitialAvatar(p.owner_name, p.color)}';" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ${color};">`
     : `<div style="width:56px;height:56px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;">${(nameEsc.charAt(0)||'?').toUpperCase()}</div>`;
   return `<div class="popup-header">${photoHtml}<div class="popup-info"><div class="popup-name">${nameEsc}</div><div class="popup-car">${makeEsc} ${modelEsc}</div></div></div><div class="popup-stats"><div class="popup-stat"><div class="popup-stat-val">${spd}</div><div class="popup-stat-label">mph</div></div><div class="popup-stat"><div class="popup-stat-val" style="font-size:11px;">${esc(lastSeen)}</div><div class="popup-stat-label">last seen</div></div></div>`;
 }
@@ -1642,13 +1642,13 @@ function renderPhotoGrid(participants) {
   grid.innerHTML = '';
 
   participants.forEach(p => {
-    const color = p.car_color || '#3388FF';
+    const color = p.color || '#3388FF';
     const isOwn = p.id === state.myId;
     const spd = typeof p.speed === 'number' ? p.speed : 0;
 
     const card = document.createElement('div');
     card.className = 'photo-card' + (isOwn ? ' own-card' : '');
-    card.title = esc(p.name || 'Driver');
+    card.title = esc(p.owner_name || 'Driver');
     card.addEventListener('click', () => {
       if (p.lat && p.lng) map.flyTo({ center: [p.lng, p.lat], zoom: 14, duration: 1200 });
     });
@@ -1659,8 +1659,8 @@ function renderPhotoGrid(participants) {
 
     const img = document.createElement('img');
     img.className = 'photo-avatar-img';
-    img.src = p.photo_url || generateInitialAvatar(p.name, color);
-    img.onerror = () => { img.src = generateInitialAvatar(p.name, color); };
+    img.src = p.photo_url || generateInitialAvatar(p.owner_name, color);
+    img.onerror = () => { img.src = generateInitialAvatar(p.owner_name, color); };
     img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
 
     const dot = document.createElement('div');
@@ -1671,14 +1671,14 @@ function renderPhotoGrid(participants) {
 
     const nameEl = document.createElement('div');
     nameEl.className = 'photo-name';
-    nameEl.textContent = (p.name || 'Driver').split(' ')[0];
+    nameEl.textContent = (p.owner_name || 'Driver').split(' ')[0];
 
     const carEl = document.createElement('div');
     carEl.className = 'photo-car';
     const colorDot = document.createElement('div');
     colorDot.className = 'car-color-dot';
     colorDot.style.background = color;
-    const makeText = document.createTextNode(esc(p.car_make || ''));
+    const makeText = document.createTextNode(esc(p.make || ''));
     carEl.appendChild(colorDot);
     carEl.appendChild(makeText);
 
@@ -1703,13 +1703,13 @@ function renderPhotoGrid(participants) {
 ═══════════════════════════════════════════════ */
 function appendChatMessage(msg, participants) {
   const container = document.getElementById('chat-messages');
-  const isOwn = msg.participant_id === state.myId;
-  const p = participants ? participants.find(x => x.id === msg.participant_id) : null;
-  const name = esc(p ? p.name : (msg.sender_name || 'Driver'));
+  const isOwn = msg.owner_name === state.myName;
+  const p = participants ? participants.find(x => x.owner_name === msg.owner_name) : null;
+  const name = esc(msg.owner_name || 'Driver');
   const photoSrc = p && p.photo_url ? esc(p.photo_url) : '';
   const avatarHtml = photoSrc
     ? `<img class="msg-avatar" src="${photoSrc}" alt="${name}" onerror="this.onerror=null;this.src=''" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;">`
-    : `<div style="width:24px;height:24px;border-radius:50%;background:${esc(p ? p.car_color || '#3388FF' : '#3388FF')};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;align-self:flex-end;">${name.charAt(0).toUpperCase()}</div>`;
+    : `<div style="width:24px;height:24px;border-radius:50%;background:${esc(p ? p.color || '#3388FF' : '#3388FF')};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;align-self:flex-end;">${name.charAt(0).toUpperCase()}</div>`;
 
   const msgId = esc(String(msg.id || ''));
   const div = document.createElement('div');
@@ -1740,8 +1740,8 @@ async function sendReaction(messageId, emoji) {
   try {
     await db.from('rally_message_reactions').insert({
       message_id: messageId,
-      participant_id: state.myId,
-      emoji
+      owner_name: state.myName,
+      reaction: emoji
     });
   } catch (e) { console.warn('Reaction error:', e); }
 }
@@ -1761,9 +1761,9 @@ async function sendChatMessage() {
   try {
     await db.from('rally_messages').insert({
       rally_id: state.rallyId,
-      participant_id: state.myId,
-      message: text,
-      sender_name: state.myName
+      owner_name: state.myName,
+      make: state.myMake || '',
+      message: text
     });
   } catch (e) { showToast('Message failed', 'error'); }
 }
@@ -1979,10 +1979,10 @@ document.getElementById('create-submit-btn').addEventListener('click', async () 
     const { data: pData, error: pErr } = await db.from('rally_participants').insert({
       rally_id: rallyId,
       session_id: sessionId,
-      name: nameVal,
-      car_make: makeVal,
-      car_model: modelVal,
-      car_color: createSelectedColor,
+      owner_name: nameVal,
+      make: makeVal || '',
+      model: modelVal || '',
+      color: createSelectedColor,
       photo_url: photoUrl,
       role: 'leader',
       lat: pos.lat,
@@ -2073,10 +2073,10 @@ document.getElementById('join-submit-btn').addEventListener('click', async () =>
     const { data: pData, error: pErr } = await db.from('rally_participants').insert({
       rally_id: rallyId,
       session_id: sessionId,
-      name: nameVal,
-      car_make: makeVal,
-      car_model: modelVal,
-      car_color: joinSelectedColor,
+      owner_name: nameVal,
+      make: makeVal || '',
+      model: modelVal || '',
+      color: joinSelectedColor,
       photo_url: photoUrl,
       role: 'driver',
       lat: pos.lat,
@@ -2182,10 +2182,10 @@ async function restoreSession() {
 
     state.joined = true;
     state.myId = p.id;
-    state.myName = p.name;
-    state.myMake = p.car_make;
-    state.myModel = p.car_model;
-    state.myColor = p.car_color;
+    state.myName = p.owner_name;
+    state.myMake = p.make;
+    state.myModel = p.model;
+    state.myColor = p.color;
     state.myPhotoUrl = p.photo_url;
     state.myRole = p.role;
     state.rallyId = p.rally_id || rallyId;
