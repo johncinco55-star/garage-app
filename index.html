@@ -239,15 +239,150 @@
 
     @media (max-width: 768px) {
       .sidebar { display: none; }
-      .main { margin-left: 0; padding: 20px 16px 90px; }
-      .page-title { font-size: 36px; margin-bottom: 20px; }
-      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-      .sections-row { grid-template-columns: 1fr; }
+      .main { margin-left: 0; padding: 16px 14px 90px; }
+      .page-title { font-size: 32px; margin-bottom: 16px; letter-spacing: -0.5px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+      .stat-card { padding: 16px 14px; }
+      .stat-value { font-size: 28px; }
+      .sections-row { grid-template-columns: 1fr; gap: 14px; }
       .bottom-nav { display: block; }
+      .welcome-card { padding: 32px 24px 28px; }
+      .welcome-title { font-size: 22px; }
+      select, input, textarea { font-size: 16px !important; }
     }
+
+    /* ── SIDEBAR IDENTITY ── */
+    .sidebar-identity {
+      margin-top: auto;
+      padding: 14px 14px 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .identity-card {
+      background: rgba(0,200,255,0.06);
+      border: 1px solid rgba(0,200,255,0.15);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .identity-card:hover { background: rgba(0,200,255,0.1); }
+    .identity-label { font-size: 9px; font-weight: 700; color: rgba(0,200,255,0.6); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+    .identity-name { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .identity-switch { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+    /* ── WELCOME OVERLAY ── */
+    #welcome-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      align-items: center;
+      justify-content: center;
+    }
+    #welcome-overlay.open { display: flex; }
+    .welcome-card {
+      background: #0F0F14;
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 24px;
+      padding: 44px 40px 36px;
+      width: 380px;
+      max-width: 92vw;
+      text-align: center;
+    }
+    .welcome-car { font-size: 48px; margin-bottom: 12px; animation: welcome-float 3s ease-in-out infinite; }
+    @keyframes welcome-float {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .welcome-title { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+    .welcome-sub { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 2px; text-transform: uppercase; margin: 4px 0 28px; }
+    .members-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; text-align: left; }
+    #member-pills { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .member-pill {
+      padding: 11px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 12px;
+      color: rgba(255,255,255,0.75);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.18s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .member-pill:hover { background: rgba(0,200,255,0.1); border-color: rgba(0,200,255,0.3); color: #fff; }
+    .member-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #000;
+      flex-shrink: 0;
+    }
+    .divider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+    .divider-text { font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 1px; }
+    .welcome-input-row { display: flex; gap: 8px; }
+    #welcome-input {
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #welcome-input:focus { border-color: rgba(0,200,255,0.5); }
+    #welcome-input::placeholder { color: rgba(255,255,255,0.25); }
+    .welcome-go {
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .welcome-go:hover { opacity: 0.88; }
+    .welcome-go:active { transform: scale(0.96); }
   </style>
 </head>
 <body>
+
+  <!-- WELCOME OVERLAY -->
+  <div id="welcome-overlay">
+    <div class="welcome-card">
+      <div class="welcome-car">🏎️</div>
+      <div class="welcome-title">THE GARAGE</div>
+      <div class="welcome-sub">Chicago Supercar Collective</div>
+      <div id="member-section">
+        <div class="members-label">Select your identity</div>
+        <div id="member-pills"></div>
+        <div class="divider-row">
+          <div class="divider-line"></div>
+          <div class="divider-text">OR ENTER NAME</div>
+          <div class="divider-line"></div>
+        </div>
+      </div>
+      <div class="welcome-input-row">
+        <input id="welcome-input" type="text" placeholder="Your name...">
+        <button class="welcome-go" onclick="confirmIdentity()">Enter</button>
+      </div>
+    </div>
+  </div>
 
   <!-- SIDEBAR -->
   <nav class="sidebar">
@@ -262,6 +397,13 @@
     <a href="analytics.html" class="nav-link">📊 Analytics</a>
     <a href="maintenance.html" class="nav-link">🔧 Maintenance</a>
     <a href="vault.html" class="nav-link">🔒 Vault</a>
+    <div class="sidebar-identity">
+      <div class="identity-card" onclick="switchIdentity()">
+        <div class="identity-label">Logged in as</div>
+        <div class="identity-name" id="sidebar-identity-name">—</div>
+        <div class="identity-switch">tap to switch →</div>
+      </div>
+    </div>
   </nav>
 
   <!-- MAIN -->
@@ -494,6 +636,61 @@
         </div>
       `).join('')
     }
+
+    /* ── IDENTITY ── */
+    const AVATAR_COLORS = ['#00C8FF','#00FF88','#FFB800','#FF4444','#A78BFA','#F472B6','#34D399'];
+    function avatarColor(name) {
+      let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+      return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+    }
+    function initials(name) { return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2); }
+
+    async function initIdentity() {
+      const stored = localStorage.getItem('garage_owner_name');
+      if (stored) { document.getElementById('sidebar-identity-name').textContent = stored; return; }
+      showWelcome();
+    }
+
+    async function showWelcome() {
+      const overlay = document.getElementById('welcome-overlay');
+      overlay.classList.add('open');
+      const { data: cars } = await db.from('cars').select('owner_name').order('created_at', { ascending: false });
+      const names = [...new Set((cars || []).map(c => c.owner_name).filter(Boolean))];
+      const pills = document.getElementById('member-pills');
+      pills.innerHTML = '';
+      if (names.length === 0) {
+        document.getElementById('member-section').style.display = 'none';
+      } else {
+        names.forEach(name => {
+          const btn = document.createElement('button');
+          btn.className = 'member-pill';
+          const color = avatarColor(name);
+          btn.innerHTML = `<div class="member-avatar" style="background:${color}">${initials(name)}</div><span>${esc(name)}</span>`;
+          btn.addEventListener('click', () => {
+            document.getElementById('welcome-input').value = name;
+            confirmIdentity();
+          });
+          pills.appendChild(btn);
+        });
+      }
+      document.getElementById('welcome-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmIdentity(); });
+    }
+
+    function confirmIdentity() {
+      const name = document.getElementById('welcome-input').value.trim();
+      if (!name) { document.getElementById('welcome-input').focus(); return; }
+      localStorage.setItem('garage_owner_name', name);
+      document.getElementById('welcome-overlay').classList.remove('open');
+      document.getElementById('sidebar-identity-name').textContent = name;
+    }
+
+    function switchIdentity() {
+      localStorage.removeItem('garage_owner_name');
+      document.getElementById('welcome-input').value = '';
+      showWelcome();
+    }
+
+    initIdentity();
 
     loadStats()
     loadActivity()

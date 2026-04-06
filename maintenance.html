@@ -116,7 +116,8 @@
       border: 1px solid var(--card-border);
       border-radius: 12px;
       backdrop-filter: blur(10px);
-      overflow: hidden;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     table {
       width: 100%;
@@ -255,14 +256,24 @@
     }
     .bn-item.active { color: var(--cyan); }
     .bn-icon { font-size: 20px; line-height: 1; }
+    .sidebar-identity { margin-top: auto; padding: 14px 14px 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .identity-card { background: rgba(0,200,255,0.06); border: 1px solid rgba(0,200,255,0.15); border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: background 0.2s; }
+    .identity-card:hover { background: rgba(0,200,255,0.1); }
+    .identity-label { font-size: 9px; font-weight: 700; color: rgba(0,200,255,0.6); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+    .identity-name { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .identity-switch { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
 
     @media (max-width: 900px) {
       .sidebar { display: none; }
-      .main { margin-left: 0; padding: 20px 12px 90px; }
-      .page-title { font-size: 30px; }
-      table { font-size: 11px; }
+      .main { margin-left: 0; padding: 16px 12px 90px; }
+      .page-title { font-size: 28px; }
+      .top-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .add-btn { width: 100%; text-align: center; }
+      table { font-size: 11px; min-width: 560px; }
       th, td { padding: 10px 10px; }
       .bottom-nav { display: block; }
+      .modal { width: calc(100vw - 32px); max-height: calc(100dvh - 60px); border-radius: 16px; }
+      select, input, textarea { font-size: 16px !important; }
     }
   </style>
 </head>
@@ -280,6 +291,13 @@
     <a href="analytics.html" class="nav-link">📊 Analytics</a>
     <a href="maintenance.html" class="nav-link active">🔧 Maintenance</a>
     <a href="vault.html" class="nav-link">🔒 Vault</a>
+    <div class="sidebar-identity">
+      <div class="identity-card" onclick="location.href='index.html'">
+        <div class="identity-label">Logged in as</div>
+        <div class="identity-name" id="sidebar-identity-name">—</div>
+        <div class="identity-switch">tap to switch →</div>
+      </div>
+    </div>
   </nav>
 
   <main class="main">
@@ -423,7 +441,7 @@
             <td>${esc(l.owner_name || '—')}</td>
             <td><div style="font-weight:600">${esc(l.title)}</div></td>
             <td><span class="status-badge ${statusClass(l.status)}">${statusLabel(l.status)}</span></td>
-            <td>${formatDate(l.date)}</td>
+            <td>${formatDate(l.scheduled_at)}</td>
             <td style="color:var(--cyan);font-weight:600">${formatCost(l.cost)}</td>
           </tr>
         `
@@ -468,7 +486,7 @@
         title,
         description: desc || null,
         status,
-        date: date || null,
+        scheduled_at: date ? new Date(date).toISOString() : null,
         cost: cost ? parseFloat(cost) : null
       })
 
@@ -476,6 +494,8 @@
       closeModal()
       loadLogs()
     }
+
+    document.getElementById('sidebar-identity-name').textContent = localStorage.getItem('garage_owner_name') || 'Guest';
   </script>
 </body>
 </html>

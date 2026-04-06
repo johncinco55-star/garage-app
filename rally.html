@@ -1105,6 +1105,13 @@
   <a href="analytics.html" class="nav-link"><span class="nav-icon">📊</span> Analytics</a>
   <a href="maintenance.html" class="nav-link"><span class="nav-icon">🔧</span> Maintenance</a>
   <a href="vault.html" class="nav-link"><span class="nav-icon">🔒</span> Vault</a>
+  <div style="margin-top:auto;padding:14px 14px 10px;border-top:1px solid rgba(255,255,255,0.06);">
+    <div onclick="location.href='index.html'" style="background:rgba(0,200,255,0.06);border:1px solid rgba(0,200,255,0.15);border-radius:10px;padding:10px 12px;cursor:pointer;">
+      <div style="font-size:9px;font-weight:700;color:rgba(0,200,255,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Logged in as</div>
+      <div id="sidebar-identity-name" style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;">tap to switch →</div>
+    </div>
+  </div>
 </nav>
 
 <!-- APP LAYOUT -->
@@ -1133,6 +1140,14 @@
         <div id="route-badge" class="route-badge" style="display:none"></div>
       </div>
       <button class="start-nav-btn" id="start-nav-btn" onclick="startNavigation()">🚗 START NAVIGATION</button>
+    </div>
+
+    <!-- Standalone Navigate / My Location Buttons -->
+    <div id="map-fab-group" style="position:absolute;bottom:100px;right:14px;z-index:200;display:flex;flex-direction:column;gap:10px;">
+      <button id="locate-me-btn" onclick="locateMe()" title="My Location"
+        style="width:44px;height:44px;border-radius:12px;background:rgba(10,10,15,0.9);border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);transition:background 0.2s;">📍</button>
+      <button id="quick-nav-btn" onclick="toggleQuickNav()" title="Navigate"
+        style="width:44px;height:44px;border-radius:12px;background:rgba(0,200,255,0.9);border:none;color:#000;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity 0.2s;font-family:'Space Grotesk',sans-serif;">🗺</button>
     </div>
 
     <!-- Apple Maps Nav: Top Pill -->
@@ -1366,8 +1381,11 @@ mapboxgl.accessToken = _mb.join('');
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/dark-v11',
-  center: [0, 20],
-  zoom: 2
+  center: [-87.6298, 41.8781], // Chicago
+  zoom: 11,
+  pitch: 0,
+  bearing: 0,
+  antialias: true
 });
 map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-left');
 
@@ -1376,19 +1394,7 @@ map.on('load', () => {
 });
 setTimeout(() => map.resize(), 100);
 setTimeout(() => map.resize(), 500);
-setTimeout(() => map.resize(), 1000);
 window.addEventListener('resize', () => map.resize());
-
-// Fly to user's GPS position on load
-navigator.geolocation.getCurrentPosition(
-  (pos) => {
-    map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 10, duration: 1500 });
-  },
-  () => {
-    // GPS denied — stay at world view, user can search
-  },
-  { enableHighAccuracy: true, timeout: 5000 }
-);
 
 /* ═══════════════════════════════════════════════
    STATE
@@ -2957,6 +2963,66 @@ document.querySelectorAll('.saved-routes-title').forEach(title => {
 map.on('click', (e) => {
   // Only close if not in hazard drop mode
   if (typeof hazardDropType !== 'undefined' && hazardDropType) return;
+});
+
+/* ══════════════════════════════
+   STANDALONE NAV — no rally required
+══════════════════════════════ */
+let quickNavOpen = false;
+let myLocationMarker = null;
+
+function locateMe() {
+  const btn = document.getElementById('locate-me-btn');
+  btn.textContent = '⏳';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { longitude: lng, latitude: lat } = pos.coords;
+      map.flyTo({ center: [lng, lat], zoom: 14, duration: 1200 });
+
+      // Remove old marker
+      if (myLocationMarker) { myLocationMarker.remove(); myLocationMarker = null; }
+
+      // Blue pulsing dot for own location
+      const el = document.createElement('div');
+      el.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#00C8FF;border:2px solid #fff;box-shadow:0 0 0 4px rgba(0,200,255,0.3);';
+      myLocationMarker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+      btn.textContent = '📍';
+    },
+    () => { btn.textContent = '📍'; showToast('GPS access denied', 'error'); },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+
+function toggleQuickNav() {
+  quickNavOpen = !quickNavOpen;
+  const rp = document.getElementById('route-planner');
+  const btn = document.getElementById('quick-nav-btn');
+  if (quickNavOpen) {
+    rp.classList.add('visible');
+    btn.style.background = 'rgba(255,255,255,0.9)';
+    btn.textContent = '✕';
+  } else {
+    if (!state.joined) rp.classList.remove('visible');
+    btn.style.background = 'rgba(0,200,255,0.9)';
+    btn.textContent = '🗺';
+  }
+}
+
+document.getElementById('sidebar-identity-name').textContent = localStorage.getItem('garage_owner_name') || 'Guest';
+
+// Auto-locate on load
+map.on('load', () => {
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { longitude: lng, latitude: lat } = pos.coords;
+      map.flyTo({ center: [lng, lat], zoom: 13, duration: 1800 });
+      const el = document.createElement('div');
+      el.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#00C8FF;border:2px solid #fff;box-shadow:0 0 0 4px rgba(0,200,255,0.25);';
+      myLocationMarker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+    },
+    () => {}, // GPS denied — stay at Chicago
+    { enableHighAccuracy: true, timeout: 6000 }
+  );
 });
 
 </script>
